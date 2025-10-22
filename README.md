@@ -1,36 +1,190 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎭 VRM Dance Studio
 
-## Getting Started
+A stunning live streaming platform featuring virtual VRM characters with real-time animations, live chat, and music integration.
 
-First, run the development server:
+![Next.js](https://img.shields.io/badge/Next.js-15-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
+![Three.js](https://img.shields.io/badge/Three.js-Latest-orange)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-```bash
+## ✨ Features
+
+- 🎪 **VRM Character Animation** - Real-time 3D character rendering with VRMA animation support
+- 💬 **Live Chat System** - Interactive chat with user avatars and color-coded messages
+- 🎵 **Spotify Integration** - Embedded music player with playlist support
+- 🌊 **Danmaku Comments** - Floating comments across the screen (Bilibili/Niconico style)
+- 📱 **Fully Responsive** - Optimized for desktop, tablet, and mobile devices
+- ✨ **Glassmorphism UI** - Modern, translucent interface design
+- 🎨 **Smooth Animations** - Powered by Framer Motion and CSS animations
+
+## 🚀 Demo
+
+[Live Demo](#) (Add your deployment URL here)
+
+## 📸 Screenshots
+
+Add screenshots of your application here
+
+## 🛠️ Tech Stack
+
+### Frontend
+- **Next.js 15** - React framework with App Router
+- **TypeScript** - Type-safe development
+- **Tailwind CSS** - Utility-first styling
+- **Framer Motion** - Animation library
+
+### 3D & VRM
+- **Three.js** - WebGL 3D library
+- **@pixiv/three-vrm** - VRM model loader and runtime
+- **@pixiv/three-vrm-animation** - VRMA animation support
+- **@react-three/fiber** - React renderer for Three.js
+
+## 📦 Installation
+
+### Prerequisites
+
+- Node.js 18+ 
+- npm or yarn or pnpm
+
+### Setup
+
+1. **Clone the repository**
+
+```
+git clone https://github.com/yourusername/vrm-dance-studio.git
+cd vrm-dance-studio
+```
+2. **Install dependencies**
+```
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
+3. **Add your VRM model and VRMA animation**
+
+Place your files in the `public` folder:
+```
+public/
+    ├── model.vrm
+    └── animation.vrma
+    ```
+4. **Update the file paths in `src/app/page.tsx`**
+```
+<VRMDancer vrmUrl="/models/your-model.vrm" animationUrl="/animations/your-animation.vrma" />
+```
+
+5. **Run the development server**
+```
 npm run dev
 # or
 yarn dev
 # or
 pnpm dev
-# or
-bun dev
+```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## 📁 Project Structure
+
+```
+vrm-dance-studio/
+├── src/
+│ ├── app/
+│ │ ├── page.tsx # Main page with live stream UI
+│ │ ├── layout.tsx # Root layout
+│ │ └── globals.css # Global styles & animations
+│ └── components/
+│ └── VRMDancer.tsx # VRM character renderer
+├── public/
+│ ├── models/ # VRM model files
+│ └── animations/ # VRMA animation files
+├── next.config.ts
+├── tailwind.config.ts
+└── package.json
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🎨 Customization
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Change Character
+Replace the VRM model in `public/models/` and update the path in `page.tsx`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Change Animation
+Replace the VRMA file in `public/animations/` and update the path in `page.tsx`
 
-## Learn More
+### Modify Chat Messages
+Edit the `DEMO_COMMENTS` array in `src/app/page.tsx`:
+```
+const DEMO_COMMENTS = [
+{ user: 'YourName', text: 'Hello!', color: '#FF69B4' },
+// Add more...
+];
+```
 
-To learn more about Next.js, take a look at the following resources:
+### Change Spotify Playlist
+Update the Spotify embed URL in the iframe:
+```
+src="https://open.spotify.com/embed/playlist/YOUR_PLAYLIST_ID"
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🎯 Features Breakdown
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### VRM Character
+- Loads VRM 1.0 models
+- Supports VRMA animations
+- Real-time rendering with Three.js
+- Customizable scale and position
 
-## Deploy on Vercel
+### Live Chat
+- Real-time message display
+- User avatars with color coding
+- Auto-scroll functionality
+- Message input with validation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Danmaku System
+- Floating comments across screen
+- Random positioning
+- Custom colors and animations
+- Desktop-only feature
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Responsive Design
+- Mobile: Collapsible panels with floating buttons
+- Tablet: Optimized layout
+- Desktop: Full feature set with sidebars
+
+## 🐛 Troubleshooting
+
+**VRM model not loading?**
+- Check file path is correct
+- Ensure VRM file is version 1.0
+- Check browser console for errors
+
+**Animation not playing?**
+- Verify VRMA file format
+- Check file path in code
+- Ensure model supports the animation
+
+**Performance issues?**
+- Reduce VRM model polygon count
+- Disable danmaku on mobile
+- Optimize textures
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 🌟 Star History
+
+If you find this project useful, please consider giving it a star ⭐
+
+---
+
+Made with ❤️ using Next.js and Three.js
+
+
