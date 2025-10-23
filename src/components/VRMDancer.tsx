@@ -1,207 +1,367 @@
-"use client";
+'use client';
 
-import { useRef, useEffect, useState } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import * as THREE from "three";
-import { VRMLoaderPlugin, VRMUtils, VRM } from "@pixiv/three-vrm";
-import {
-  VRMAnimationLoaderPlugin,
-  createVRMAnimationClip,
-} from "@pixiv/three-vrm-animation";
+import { useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { VRM, VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+import { 
+  VRMAnimation,
+  VRMAnimationLoaderPlugin, 
+  createVRMAnimationClip 
+} from '@pixiv/three-vrm-animation';
+import { shuffleArray } from '@/utils/shuffle';
 
-interface VRMModelProps {
-  url: string;
-  animationUrl?: string;
+interface VRMDancerProps {
+  vrmUrl: string;
 }
 
-function VRMModel({ url, animationUrl }: VRMModelProps) {
-  const { scene } = useThree();
-  const [vrm, setVrm] = useState<VRM | null>(null);
+export default function VRMDancer({ vrmUrl }: VRMDancerProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const vrmRef = useRef<VRM | null>(null);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
-  const clockRef = useRef(new THREE.Clock());
+  const currentClipRef = useRef<THREE.AnimationAction | null>(null);
+  const clockRef = useRef<THREE.Clock>(new THREE.Clock());
+  const loaderRef = useRef<GLTFLoader | null>(null);
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadedAnimations, setLoadedAnimations] = useState<Map<string, THREE.AnimationClip>>(new Map());
+  const [currentAnimation, setCurrentAnimation] = useState<string>('');
+  
+  const animationQueueRef = useRef<string[]>([]);
+  const playedQueueRef = useRef<string[]>([]);
+  const allAnimationsRef = useRef<string[]>([]);
+  const isLoadingAnimationRef = useRef(false);
+  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isPlayingRef = useRef(false);
 
-  // Load VRM
-  useEffect(() => {
-    import("three/addons/loaders/GLTFLoader.js").then(({ GLTFLoader }) => {
-      const loader = new GLTFLoader();
-      loader.register((parser: any) => new VRMLoaderPlugin(parser));
+  // Lazy load animation
+  const lazyLoadAnimation = async (animationUrl: string): Promise<THREE.AnimationClip | null> => {
+    if (loadedAnimations.has(animationUrl)) {
+      return loadedAnimations.get(animationUrl)!;
+    }
 
-      loader.load(url, (gltf: any) => {
-        const loadedVrm = gltf.userData.vrm as VRM;
+    if (isLoadingAnimationRef.current) {
+      return null;
+    }
 
-        if (loadedVrm) {
-          loadedVrm.scene.rotation.y = 0;
-          loadedVrm.scene.scale.setScalar(1.3);
-          loadedVrm.scene.position.set(0, -1, 0);
+    const vrm = vrmRef.current;
+    const loader = loaderRef.current;
 
-          scene.add(loadedVrm.scene);
+    if (!vrm || !loader) return null;
 
-          mixerRef.current = new THREE.AnimationMixer(loadedVrm.scene);
+    try {
+      isLoadingAnimationRef.current = true;
+      console.log(`🔄 Loading: ${animationUrl.split('/').pop()}`);
 
-          setVrm(loadedVrm);
+      const gltf = await loader.loadAsync(animationUrl);
+      const vrmAnimations = gltf.userData.vrmAnimations as VRMAnimation[];
+      
+      if (vrmAnimations && vrmAnimations[0]) {
+        const clip = createVRMAnimationClip(vrmAnimations[0], vrm);
+        setLoadedAnimations(prev => new Map(prev).set(animationUrl, clip));
+        console.log(`✅ Loaded: ${animationUrl.split('/').pop()}`);
+        return clip;
+      }
+    } catch (error) {
+      console.error(`❌ Failed: ${animationUrl.split('/').pop()}`, error);
+    } finally {
+      isLoadingAnimationRef.current = false;
+    }
 
-          console.log("✅ VRM loaded successfully");
+    return null;
+  };
+
+  // Play animation with loop
+  const playAnimationWithLazyLoad = async (animationUrl: string, fadeTime: number = 0.5) => {
+    const mixer = mixerRef.current;
+    if (!mixer) return;
+
+    // Clear previous timeout
+    if (animationTimeoutRef.current) {
+      clearTimeout(animationTimeoutRef.current);
+    }
+
+    const clip = await lazyLoadAnimation(animationUrl);
+    if (!clip) return;
+
+    const newAction = mixer.clipAction(clip);
+    
+    // ✅ Loop animation để không bị dừng
+    newAction.setLoop(THREE.LoopRepeat, Infinity);
+    newAction.clampWhenFinished = false;
+
+    if (currentClipRef.current && currentClipRef.current !== newAction) {
+      currentClipRef.current.stop();
+      newAction.reset();
+      newAction.fadeIn(fadeTime);
+      newAction.play();
+    } else {
+      newAction.reset();
+      newAction.play();
+    }
+
+    currentClipRef.current = newAction;
+    setCurrentAnimation(animationUrl);
+    isPlayingRef.current = true;
+    
+    if (!playedQueueRef.current.includes(animationUrl)) {
+      playedQueueRef.current.push(animationUrl);
+    }
+
+    // Auto switch sau khi loop 2 lần
+    const duration = clip.duration * 1000;
+    const repeatTimes = 2;
+    
+    console.log(`⏱️ Duration: ${(duration / 1000).toFixed(1)}s (will loop ${repeatTimes} times)`);
+    
+    animationTimeoutRef.current = setTimeout(() => {
+      console.log('⏭️ Next animation...');
+      queueNextAnimation();
+    }, duration * repeatTimes);
+  };
+
+  // Get next animation from shuffle queue
+  const getNextAnimation = (): string | null => {
+    if (animationQueueRef.current.length === 0) {
+      console.log('🔄 Shuffling animations...');
+      animationQueueRef.current = shuffleArray(allAnimationsRef.current);
+      playedQueueRef.current = [];
+      console.log('✅ New queue:', animationQueueRef.current.map(url => url.split('/').pop()));
+    }
+
+    const next = animationQueueRef.current.shift();
+    return next || null;
+  };
+
+  // Queue next animation
+  const queueNextAnimation = async () => {
+    const nextUrl = getNextAnimation();
+    if (nextUrl) {
+      console.log(`▶️ Playing: ${nextUrl.split('/').pop()}`);
+      await playAnimationWithLazyLoad(nextUrl, 0.8);
+    }
+  };
+
+  // Preload priority animations
+  const preloadPriorityAnimations = async (vrm: VRM, urls: string[]): Promise<Map<string, THREE.AnimationClip>> => {
+    const loader = loaderRef.current;
+    const animations = new Map<string, THREE.AnimationClip>();
+
+    if (!loader) return animations;
+
+    const loadPromises = urls.slice(0, 3).map(async (url) => {
+      try {
+        const gltf = await loader.loadAsync(url);
+        const vrmAnimations = gltf.userData.vrmAnimations as VRMAnimation[];
+        
+        if (vrmAnimations && vrmAnimations[0]) {
+          const clip = createVRMAnimationClip(vrmAnimations[0], vrm);
+          animations.set(url, clip);
+          console.log(`✅ Preloaded: ${url.split('/').pop()}`);
         }
-      });
+      } catch (error) {
+        console.error(`Failed to preload: ${url.split('/').pop()}`, error);
+      }
     });
 
-    return () => {
-      if (vrm) {
-        scene.remove(vrm.scene);
-        VRMUtils.deepDispose(vrm.scene);
+    await Promise.all(loadPromises);
+    return animations;
+  };
+
+  // ✅ Handle tab visibility change
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('👁️ Tab active');
+        
+        const currentAction = currentClipRef.current;
+        
+        if (currentAction && !currentAction.isRunning()) {
+          console.log('🔄 Restarting animation...');
+          currentAction.reset();
+          currentAction.play();
+          isPlayingRef.current = true;
+        } else if (!currentAction && allAnimationsRef.current.length > 0) {
+          console.log('🎬 Starting new animation...');
+          queueNextAnimation();
+        }
+      } else {
+        console.log('👁️‍🗨️ Tab hidden');
       }
     };
-  }, [url, scene]);
 
-  // Load VRMA Animation
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // ✅ Heartbeat: Check animation status every 3 seconds
   useEffect(() => {
-    if (!vrm || !animationUrl || !mixerRef.current) return;
+    const heartbeat = setInterval(() => {
+      const currentAction = currentClipRef.current;
+      
+      // Check if animation stopped unexpectedly
+      if (currentAction && !currentAction.isRunning() && isPlayingRef.current) {
+        console.warn('⚠️ Animation stopped unexpectedly! Restarting...');
+        currentAction.reset();
+        currentAction.play();
+      }
+      
+      // If no animation playing, start one
+      if (!currentAction && allAnimationsRef.current.length > 0 && !isLoadingAnimationRef.current) {
+        console.log('🔄 No animation playing, starting one...');
+        queueNextAnimation();
+      }
+    }, 3000); // Check every 3 seconds
 
-    console.log("🎬 Loading VRMA animation from:", animationUrl);
+    return () => clearInterval(heartbeat);
+  }, []);
 
-    import("three/addons/loaders/GLTFLoader.js").then(({ GLTFLoader }) => {
-      const loader = new GLTFLoader();
-      loader.register((parser: any) => new VRMAnimationLoaderPlugin(parser));
+  // Main setup
+  useEffect(() => {
+    if (!canvasRef.current) return;
 
-      loader.load(
-        animationUrl,
-        (gltf: any) => {
-          const vrmAnimations = gltf.userData.vrmAnimations;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 20);
+    camera.position.set(0, 1.4, 3);
 
-          if (vrmAnimations && vrmAnimations.length > 0 && mixerRef.current) {
-            console.log("✅ VRMA animations found:", vrmAnimations.length);
-
-            // Create animation clip
-            const clip = createVRMAnimationClip(vrmAnimations[0], vrm);
-
-            // Play animation
-            const action = mixerRef.current.clipAction(clip);
-            action.play();
-
-            console.log("✅ VRMA Animation playing!");
-          } else {
-            console.warn("⚠️ No animations found in VRMA file");
-          }
-        },
-        (progress) => {
-          const percent = ((progress.loaded / progress.total) * 100).toFixed(0);
-          console.log(`⏳ Loading animation: ${percent}%`);
-        },
-        (error) => {
-          console.error("❌ VRMA load error:", error);
-        }
-      );
+    const renderer = new THREE.WebGLRenderer({
+      canvas: canvasRef.current,
+      alpha: true,
+      antialias: true,
     });
-  }, [vrm, animationUrl]);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
 
-  // Animation loop
-  useFrame(() => {
-    if (!vrm) return;
+    // Lighting
+    const light = new THREE.DirectionalLight(0xffffff, Math.PI);
+    light.position.set(1, 1, 1);
+    scene.add(light);
 
-    const delta = clockRef.current.getDelta();
-    vrm.update(delta);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
 
-    // Update animation mixer
-    if (mixerRef.current) {
-      mixerRef.current.update(delta);
-    }
-  });
+    // Setup loader
+    const loader = new GLTFLoader();
+    loader.register((parser) => new VRMLoaderPlugin(parser));
+    loader.register((parser) => new VRMAnimationLoaderPlugin(parser));
+    loaderRef.current = loader;
 
-  return null;
-}
+    // Load VRM
+    loader.load(
+      vrmUrl,
+      async (gltf) => {
+        const vrm = gltf.userData.vrm as VRM;
+        vrmRef.current = vrm;
 
-export default function VRMDancer({
-  vrmUrl,
-  animationUrl,
-}: {
-  vrmUrl: string;
-  animationUrl?: string;
-}) {
-  const [loading, setLoading] = useState(true);
-  const [animLoaded, setAnimLoaded] = useState(false);
+        VRMUtils.removeUnnecessaryVertices(gltf.scene);
+        VRMUtils.removeUnnecessaryJoints(gltf.scene);
 
-  useEffect(() => {
-    if (animationUrl) {
-      // Kiểm tra file có tồn tại không
-      fetch(animationUrl, { method: "HEAD" })
-        .then(() => {
-          console.log("✅ VRMA file exists");
-          setAnimLoaded(true);
-        })
-        .catch(() => {
-          console.error("❌ VRMA file not found at:", animationUrl);
+        vrm.scene.traverse((obj) => {
+          obj.frustumCulled = false;
         });
-    }
-  }, [animationUrl]);
+
+        vrm.scene.scale.setScalar(1.25);
+        scene.add(vrm.scene);
+
+        // Spring bones
+        if (vrm.springBoneManager) {
+          console.log('✅ Spring Bones enabled');
+        }
+
+        // Setup mixer
+        const mixer = new THREE.AnimationMixer(vrm.scene);
+        mixerRef.current = mixer;
+
+        // Load animation list
+        const { ANIMATION_LIST } = await import('@/constants/animations');
+        
+        allAnimationsRef.current = ANIMATION_LIST;
+        animationQueueRef.current = shuffleArray([...ANIMATION_LIST]);
+        
+        console.log('🎲 Initial shuffle:', animationQueueRef.current.map(url => url.split('/').pop()));
+
+        // Preload
+        const priorityAnimations = await preloadPriorityAnimations(vrm, ANIMATION_LIST);
+        setLoadedAnimations(priorityAnimations);
+        console.log(`✅ Preloaded ${priorityAnimations.size} animations`);
+
+        // Play first
+        const firstUrl = getNextAnimation();
+        if (firstUrl) {
+          await playAnimationWithLazyLoad(firstUrl, 0);
+        }
+
+        setIsLoading(false);
+      },
+      undefined,
+      (error) => {
+        console.error('VRM load error:', error);
+        setIsLoading(false);
+      }
+    );
+
+    // Animation loop
+    const animate = () => {
+      requestAnimationFrame(animate);
+
+      const deltaTime = clockRef.current.getDelta();
+
+      if (mixerRef.current) {
+        mixerRef.current.update(deltaTime);
+      }
+
+      if (vrmRef.current) {
+        vrmRef.current.update(deltaTime);
+      }
+
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    // Handle resize
+    const handleResize = () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    };
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+      }
+      renderer.dispose();
+      if (vrmRef.current) {
+        scene.remove(vrmRef.current.scene);
+      }
+    };
+  }, [vrmUrl]);
 
   return (
-    <div className="relative w-screen h-screen">
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur z-20">
-          <div className="text-white text-2xl flex flex-col items-center gap-4">
-            <div className="w-16 h-16 border-4 border-pink-500/30 border-t-pink-500 rounded-full animate-spin" />
-            <p className="font-bold">Loading Character...</p>
+    <>
+      <canvas ref={canvasRef} className="fixed inset-0 w-full h-full" />
+      
+      {/* Loading Screen */}
+      {isLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="text-white text-center">
+            <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-lg font-semibold">Loading VRM Model...</p>
           </div>
         </div>
       )}
-
-      <Canvas
-        camera={{ position: [0, 0.8, 3.5], fov: 50 }}
-        gl={{
-          antialias: true,
-          toneMapping: THREE.ACESFilmicToneMapping, // Màu sắc đậm hơn
-          toneMappingExposure: 1.2, // Tăng độ sáng
-        }}
-        onCreated={() => setLoading(false)}
-      >
-        {/* <color attach="background" args={["#f7f7f7"]} /> */}
-
-        {/* Giảm ambient light */}
-        <ambientLight intensity={0.6} />
-
-        {/* Tăng directional light với màu ấm */}
-        <directionalLight
-          position={[5, 5, 5]}
-          intensity={2.8}
-          color="#ffffff"
-          castShadow
-        />
-        <directionalLight
-          position={[-5, 3, -3]}
-          intensity={1.2}
-          color="#ffeeee" // Ánh sáng hơi ấm
-        />
-
-        {/* Rim light - tạo viền sáng */}
-        <directionalLight position={[0, 2, -5]} intensity={1.5} />
-
-        <VRMModel url={vrmUrl} animationUrl={animationUrl} />
-      </Canvas>
-
-      {/* <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20">
-        <div className="bg-black/70 backdrop-blur px-6 py-3 rounded-full text-white text-center">
-          <p className="text-sm mb-1">🎵 VRM Animation</p>
-          {animationUrl ? (
-            animLoaded ? (
-              <p className="text-xs text-green-400">✅ VRMA Loaded</p>
-            ) : (
-              <p className="text-xs text-yellow-400">⏳ Loading VRMA...</p>
-            )
-          ) : (
-            <p className="text-xs text-gray-400">No Animation</p>
-          )}
-        </div>
-      </div> */}
-
-      {/* Debug info */}
-      {/* <div className="absolute top-4 left-4 bg-black/70 text-white text-xs p-3 rounded">
-        <p className="font-bold mb-2">Debug Info:</p>
-        <p>VRM: {vrmUrl.split('/').pop()}</p>
-        {animationUrl && (
-          <p>VRMA: {animationUrl.split('/').pop()}</p>
-        )}
-        <p className="mt-2 text-gray-400">Check console for details</p>
-      </div> */}
-    </div>
+      
+      {/* Debug Info */}
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 bg-black/60 backdrop-blur-xl px-4 py-2 text-white text-xs rounded">
+        <p>Playing: {currentAnimation.split('/').pop() || 'None'}</p>
+        <p>Queue: {animationQueueRef.current.length} | Played: {playedQueueRef.current.length}/{allAnimationsRef.current.length}</p>
+        <p>Cached: {loadedAnimations.size} animations</p>
+      </div>
+    </>
   );
 }
