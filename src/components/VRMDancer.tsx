@@ -13,9 +13,11 @@ import { shuffleArray } from '@/utils/shuffle';
 
 interface VRMDancerProps {
   vrmUrl: string;
+  rotation?: number;
+  scale?: number; 
 }
 
-export default function VRMDancer({ vrmUrl }: VRMDancerProps) {
+export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDancerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const vrmRef = useRef<VRM | null>(null);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
@@ -263,7 +265,12 @@ export default function VRMDancer({ vrmUrl }: VRMDancerProps) {
           obj.frustumCulled = false;
         });
 
-        vrm.scene.scale.setScalar(1.25);
+        vrm.scene.scale.setScalar(scale);
+
+        if (rotation !== 0) {
+          vrm.scene.rotation.y = THREE.MathUtils.degToRad(rotation);
+        }
+
         scene.add(vrm.scene);
 
         // Spring bones

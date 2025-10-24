@@ -1,18 +1,21 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
-import LiveHeader from "@/components/LiveHeader";
-import ChatPanel from "@/components/ChatPanel";
-import SpotifyPlayer from "@/components/SpotifyPlayer";
-import Danmaku from "@/components/Danmaku";
-import MobileControls from "@/components/MobileControls";
-import { ChatMessage } from "@/types/chat";
-import { DEMO_COMMENTS } from "@/constants/demo-comments";
+import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
+import LiveHeader from '@/components/LiveHeader';
+import ChatPanel from '@/components/ChatPanel';
+import SpotifyWebPlayer from '@/components/SpotifyWebPlayer';
+import Danmaku from '@/components/Danmaku';
+import MobileControls from '@/components/MobileControls';
+import { ChatMessage } from '@/types/chat';
+import { DEMO_COMMENTS } from '@/constants/demo-comments';
+import { VRM_MODELS, DEFAULT_MODEL_ID } from '@/constants/models';
+import { getCookie, setCookie } from '@/utils/cookies';
+import { getCodeFromUrl, exchangeCodeForToken, saveToken } from '@/utils/spotify-auth';
 
-const VRMDancer = dynamic(() => import("@/components/VRMDancer"), {
-  ssr: false,
-});
+const VRMDancer = dynamic(() => import('@/components/VRMDancer'), { ssr: false });
+
+const COOKIE_MODEL_KEY = 'selected_vrm_model';
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
@@ -20,9 +23,49 @@ export default function Home() {
   const [showChat, setShowChat] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [viewerCount, setViewerCount] = useState(8234);
+  const [selectedModelId, setSelectedModelId] = useState<string>(DEFAULT_MODEL_ID);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  // ✅ Handle Spotify callback
+  useEffect(() => {
+    const handleSpotifyAuth = async () => {
+      const code = getCodeFromUrl();
+      if (code) {
+        setIsAuthenticating(true);
+        console.log('🔑 Spotify auth code detected');
+        
+        try {
+          const token = await exchangeCodeForToken(code);
+          if (token) {
+            saveToken(token);
+            console.log('✅ Token saved successfully');
+            
+            // Clean URL and reload
+            window.history.replaceState({}, document.title, '/');
+            setTimeout(() => {
+              window.location.reload();
+            }, 500);
+          } else {
+            setIsAuthenticating(false);
+            console.error('❌ Failed to get token');
+          }
+        } catch (error) {
+          console.error('❌ Auth error:', error);
+          setIsAuthenticating(false);
+        }
+      }
+    };
+
+    handleSpotifyAuth();
+  }, []);
 
   useEffect(() => {
     setMounted(true);
+
+    const savedModelId = getCookie(COOKIE_MODEL_KEY);
+    if (savedModelId && VRM_MODELS.find(m => m.id === savedModelId)) {
+      setSelectedModelId(savedModelId);
+    }
 
     if (window.innerWidth >= 1024) {
       setShowPlayer(true);
@@ -30,15 +73,12 @@ export default function Home() {
     }
 
     const msgInterval = setInterval(() => {
-      const random =
-        DEMO_COMMENTS[Math.floor(Math.random() * DEMO_COMMENTS.length)];
-      setMessages((prev) =>
-        [...prev, { ...random, id: Date.now() }].slice(-50)
-      );
+      const random = DEMO_COMMENTS[Math.floor(Math.random() * DEMO_COMMENTS.length)];
+      setMessages(prev => [...prev, { ...random, id: Date.now() }].slice(-50));
     }, 3000);
 
     const viewerInterval = setInterval(() => {
-      setViewerCount((prev) => prev + Math.floor(Math.random() * 20) - 5);
+      setViewerCount(prev => prev + Math.floor(Math.random() * 20) - 5);
     }, 5000);
 
     return () => {
@@ -47,14 +87,31 @@ export default function Home() {
     };
   }, []);
 
-  const handleSendMessage = (text: string) => {
-    setMessages((prev) => [
-      ...prev,
-      { user: "You", text, color: "#FF1493", id: Date.now() },
-    ]);
+  const handleSelectModel = (modelId: string) => {
+    setSelectedModelId(modelId);
+    setCookie(COOKIE_MODEL_KEY, modelId, 365);
   };
 
+  const handleSendMessage = (text: string) => {
+    setMessages(prev => [...prev, { user: 'You', text, color: '#FF1493', id: Date.now() }]);
+  };
+
+  // Show auth loading
+  if (isAuthenticating) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-white text-lg font-semibold">Connecting to Spotify...</p>
+          <p className="text-white/60 text-sm mt-2">Please wait...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!mounted) return null;
+
+  const selectedModel = VRM_MODELS.find(m => m.id === selectedModelId) || VRM_MODELS[0];
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -63,30 +120,26 @@ export default function Home() {
         <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-pink-500/20 rounded-full blur-3xl animate-pulse" />
       </div>
 
-      <LiveHeader viewerCount={viewerCount} />
+      <LiveHeader 
+        viewerCount={viewerCount}
+        selectedModelId={selectedModelId}
+        onSelectModel={handleSelectModel}
+      />
 
-      {/* Main Content */}
       <main className="relative h-full pt-14 lg:pt-16">
-        {/* VRM Dancer */}
         <div className="absolute inset-0 z-10">
-          <VRMDancer vrmUrl="/models/3193725086051913960.vrm" />
+          <VRMDancer 
+            key={selectedModelId} 
+            vrmUrl={selectedModel.path}
+            rotation={selectedModel.rotation || 0}
+            scale={selectedModel.scale || 1.5}
+          />
         </div>
 
-        {/* Background layer */}
-        {/* <div className="absolute inset-0 z-0">
-          <img 
-            src="/backgrounds/stage.gif" 
-            alt="stage"
-            className="w-full h-full object-cover opacity-30"
-          />
-        </div> */}
-
-        {/* Danmaku */}
         <div className="hidden lg:block">
           <Danmaku comments={messages} />
         </div>
 
-        {/* Chat Panel */}
         {showChat && (
           <ChatPanel
             messages={messages}
@@ -94,7 +147,7 @@ export default function Home() {
             onClose={() => setShowChat(false)}
           />
         )}
-
+        
         {!showChat && (
           <button
             onClick={() => setShowChat(true)}
@@ -104,14 +157,11 @@ export default function Home() {
           </button>
         )}
 
-        {/* Spotify Player - ĐÚNG CÁCH */}
-        {showPlayer && (
-          <SpotifyPlayer
-            playlistId="7zDGwh1ILDa5JAN0qgkZ2G"
-            onClose={() => setShowPlayer(false)}
-          />
-        )}
-
+        <SpotifyWebPlayer
+          isVisible={showPlayer}
+          onClose={() => setShowPlayer(false)}
+        />
+        
         {!showPlayer && (
           <button
             onClick={() => setShowPlayer(true)}
@@ -121,7 +171,6 @@ export default function Home() {
           </button>
         )}
 
-        {/* Mobile Controls */}
         <MobileControls
           showChat={showChat}
           showPlayer={showPlayer}
