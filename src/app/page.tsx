@@ -4,14 +4,13 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import LiveHeader from '@/components/LiveHeader';
 import ChatPanel from '@/components/ChatPanel';
-import SpotifyWebPlayer from '@/components/SpotifyWebPlayer';
+import SpotifyEmbed from '@/components/SpotifyEmbed';
 import Danmaku from '@/components/Danmaku';
 import MobileControls from '@/components/MobileControls';
 import { ChatMessage } from '@/types/chat';
 import { DEMO_COMMENTS } from '@/constants/demo-comments';
 import { VRM_MODELS, DEFAULT_MODEL_ID } from '@/constants/models';
 import { getCookie, setCookie } from '@/utils/cookies';
-import { getCodeFromUrl, exchangeCodeForToken, saveToken } from '@/utils/spotify-auth';
 
 const VRMDancer = dynamic(() => import('@/components/VRMDancer'), { ssr: false });
 
@@ -24,40 +23,6 @@ export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [viewerCount, setViewerCount] = useState(8234);
   const [selectedModelId, setSelectedModelId] = useState<string>(DEFAULT_MODEL_ID);
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
-
-  // ✅ Handle Spotify callback
-  useEffect(() => {
-    const handleSpotifyAuth = async () => {
-      const code = getCodeFromUrl();
-      if (code) {
-        setIsAuthenticating(true);
-        console.log('🔑 Spotify auth code detected');
-        
-        try {
-          const token = await exchangeCodeForToken(code);
-          if (token) {
-            saveToken(token);
-            console.log('✅ Token saved successfully');
-            
-            // Clean URL and reload
-            window.history.replaceState({}, document.title, '/');
-            setTimeout(() => {
-              window.location.reload();
-            }, 500);
-          } else {
-            setIsAuthenticating(false);
-            console.error('❌ Failed to get token');
-          }
-        } catch (error) {
-          console.error('❌ Auth error:', error);
-          setIsAuthenticating(false);
-        }
-      }
-    };
-
-    handleSpotifyAuth();
-  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -95,19 +60,6 @@ export default function Home() {
   const handleSendMessage = (text: string) => {
     setMessages(prev => [...prev, { user: 'You', text, color: '#FF1493', id: Date.now() }]);
   };
-
-  // Show auth loading
-  if (isAuthenticating) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white text-lg font-semibold">Connecting to Spotify...</p>
-          <p className="text-white/60 text-sm mt-2">Please wait...</p>
-        </div>
-      </div>
-    );
-  }
 
   if (!mounted) return null;
 
@@ -157,7 +109,7 @@ export default function Home() {
           </button>
         )}
 
-        <SpotifyWebPlayer
+        <SpotifyEmbed
           isVisible={showPlayer}
           onClose={() => setShowPlayer(false)}
         />
