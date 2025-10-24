@@ -42,8 +42,12 @@ html, body {
     transform: translateX(0);
   }
   to {
-    transform: translateX(calc(-100vw - 120%));
+    transform: translateX(-200vw);
   }
+}
+
+.animate-danmaku {
+  animation: danmaku linear forwards;
 }
 
 @keyframes fadeIn {

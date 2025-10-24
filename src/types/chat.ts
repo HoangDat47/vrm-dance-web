@@ -1,6 +1,8 @@
+// src/types/chat.ts
 export interface ChatMessage {
+  id: string | number;
   user: string;
   text: string;
   color: string;
-  id: number;
+  timestamp?: number;
 }

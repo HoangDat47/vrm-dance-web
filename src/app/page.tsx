@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import LiveHeader from '@/components/LiveHeader';
 import ChatPanel from '@/components/ChatPanel';
 import SpotifyEmbed from '@/components/SpotifyEmbed';
+import AISettingsPanel from '@/components/AISettingsPanel';
 import Danmaku from '@/components/Danmaku';
 import MobileControls from '@/components/MobileControls';
 import { ChatMessage } from '@/types/chat';
@@ -20,6 +21,7 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [showPlayer, setShowPlayer] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [showAISettings, setShowAISettings] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [viewerCount, setViewerCount] = useState(8234);
   const [selectedModelId, setSelectedModelId] = useState<string>(DEFAULT_MODEL_ID);
@@ -58,7 +60,24 @@ export default function Home() {
   };
 
   const handleSendMessage = (text: string) => {
-    setMessages(prev => [...prev, { user: 'You', text, color: '#FF1493', id: Date.now() }]);
+    setMessages(prev => [...prev, { 
+      user: 'You', 
+      text, 
+      color: '#FF1493', 
+      id: Date.now() 
+    }]);
+  };
+
+  // ✅ FIX: Use model name for AI responses
+  const handleAIResponse = (response: string) => {
+    const selectedModel = VRM_MODELS.find(m => m.id === selectedModelId) || VRM_MODELS[0];
+    
+    setMessages(prev => [...prev, {
+      user: selectedModel.name, // ✅ Use model name (e.g., "Emi oxxo")
+      text: response,
+      color: '#9333EA',
+      id: Date.now()
+    }]);
   };
 
   if (!mounted) return null;
@@ -76,6 +95,12 @@ export default function Home() {
         viewerCount={viewerCount}
         selectedModelId={selectedModelId}
         onSelectModel={handleSelectModel}
+        onOpenAISettings={() => setShowAISettings(true)}
+      />
+
+      <AISettingsPanel
+        isVisible={showAISettings}
+        onClose={() => setShowAISettings(false)}
       />
 
       <main className="relative h-full pt-14 lg:pt-16">
@@ -96,6 +121,7 @@ export default function Home() {
           <ChatPanel
             messages={messages}
             onSendMessage={handleSendMessage}
+            onAIResponse={handleAIResponse}
             onClose={() => setShowChat(false)}
           />
         )}

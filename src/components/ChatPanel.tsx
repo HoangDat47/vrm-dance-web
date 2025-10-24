@@ -1,96 +1,120 @@
 'use client';
 
-import { useRef, useEffect, FormEvent } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ChatMessage } from '@/types/chat';
+import { useAIResponse } from '@/hooks/useAIResponse';
+import { getCookie } from '@/utils/cookies';
+import { VRM_MODELS } from '@/constants/models';
+
+const COOKIE_MODEL_KEY = 'selected_model';
 
 interface ChatPanelProps {
   messages: ChatMessage[];
-  onSendMessage: (message: string) => void;
+  onSendMessage: (text: string) => void;
   onClose: () => void;
+  onAIResponse?: (response: string) => void;
 }
 
-export default function ChatPanel({ messages, onSendMessage, onClose }: ChatPanelProps) {
-  const chatBoxRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+export default function ChatPanel({ messages, onSendMessage, onClose, onAIResponse }: ChatPanelProps) {
+  const [input, setInput] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { generateResponse, isGenerating } = useAIResponse();
+
+  // ✅ Get selected model name
+  const selectedModelId = getCookie(COOKIE_MODEL_KEY) || 'default';
+  const selectedModel = VRM_MODELS.find(m => m.id === selectedModelId) || VRM_MODELS[0];
+  const aiName = selectedModel.name; // ✅ Use model name (e.g. "🎀 Miku")
 
   useEffect(() => {
-    if (chatBoxRef.current) {
-      chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const value = inputRef.current?.value.trim();
-    if (value) {
-      onSendMessage(value);
-      if (inputRef.current) inputRef.current.value = '';
+    if (!input.trim() || isGenerating) return;
+
+    const userMessage = input.trim();
+    onSendMessage(userMessage);
+    setInput('');
+
+    try {
+      const response = await generateResponse(userMessage);
+      if (response && onAIResponse) {
+        onAIResponse(response);
+      }
+    } catch (error) {
+      console.error('AI response failed:', error);
+      if (onAIResponse) {
+        onAIResponse('Xin lỗi, gặp chút vấn đề... 😅');
+      }
     }
   };
 
   return (
-    <div className="fixed right-4 top-16 lg:right-6 lg:top-20 z-40 w-[90vw] max-w-[360px] h-[calc(100vh-140px)] lg:h-[calc(100vh-160px)] flex flex-col bg-white/95 backdrop-blur-sm border border-gray-200 shadow-xl">
+    <div className="fixed right-4 top-16 lg:right-6 lg:top-20 z-40 w-[85vw] max-w-[320px] lg:max-w-[380px] h-[70vh] max-h-[600px] backdrop-blur-xl bg-black/90 border border-white/10 shadow-2xl flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white/90">
-        <h3 className="text-sm font-semibold text-gray-900">Live chat</h3>
-        <button
-          onClick={onClose}
-          className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors rounded"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Messages */}
-      <div
-        ref={chatBoxRef}
-        className="flex-1 overflow-y-auto bg-white/50"
-        style={{ 
-          scrollbarWidth: 'thin', 
-          scrollbarColor: '#cbd5e1 transparent' 
-        }}
-      >
-        <div className="px-4 py-3 space-y-4">
-          {messages.map((msg) => (
-            <div key={msg.id} className="flex items-start gap-3 animate-fadeIn">
-              {/* Avatar - Rounded */}
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 shadow-sm"
-                style={{ backgroundColor: msg.color }}
-              >
-                {msg.user[0].toUpperCase()}
-              </div>
-              
-              {/* Message Content với background xám trong suốt */}
-              <div className="flex-1 min-w-0 bg-gray-100/60 px-3 py-2 rounded">
-                <p className="text-xs font-semibold text-gray-700 mb-1">
-                  {msg.user}
-                </p>
-                <p className="text-sm text-gray-900 break-words leading-relaxed">
-                  {msg.text}
-                </p>
-              </div>
-            </div>
-          ))}
+      <div className="bg-gradient-to-r from-purple-600/90 to-pink-600/90 px-3 py-2 lg:px-4 lg:py-3 border-b border-white/10 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 bg-pink-400 rounded-full animate-pulse" />
+            <h3 className="text-white font-bold text-xs lg:text-sm">Live Chat</h3>
+            {isGenerating && (
+              <span className="text-white/60 text-xs animate-pulse">🤔</span>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="w-6 h-6 lg:w-7 lg:h-7 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
+          >
+            <svg className="w-3.5 h-3.5 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       </div>
 
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-2 lg:p-3 space-y-2">
+        {messages.map((msg) => {
+          // ✅ Use AI name for AI messages
+          const displayName = msg.user === 'AI' ? aiName : msg.user;
+          const displayColor = msg.user === 'AI' ? '#e74c3c' : msg.color;
+          
+          return (
+            <div key={msg.id} className="flex items-start gap-2 animate-fade-in">
+              <div
+                className="w-6 h-6 lg:w-7 lg:h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold"
+                style={{ backgroundColor: displayColor }}
+              >
+                {displayName[0]}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white/90 font-semibold text-xs lg:text-sm mb-0.5">{displayName}</p>
+                <p className="text-white/80 text-xs lg:text-sm break-words">{msg.text}</p>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={messagesEndRef} />
+      </div>
+
       {/* Input */}
-      <form onSubmit={handleSubmit} className="border-t border-gray-200 bg-white/90 px-4 py-3">
-        <div className="flex items-center gap-2">
+      <form onSubmit={handleSubmit} className="border-t border-white/10 p-2 lg:p-3 flex-shrink-0">
+        <div className="flex gap-2">
           <input
-            ref={inputRef}
             type="text"
-            placeholder="Say something..."
-            className="flex-1 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={isGenerating ? "AI is thinking..." : "Say something..."}
+            disabled={isGenerating}
+            className="flex-1 px-2 py-1.5 lg:px-3 lg:py-2 bg-white/5 text-white placeholder-white/40 border border-white/10 focus:border-purple-400 focus:outline-none text-xs lg:text-sm disabled:opacity-50"
           />
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition-colors"
+            disabled={!input.trim() || isGenerating}
+            className="px-3 py-1.5 lg:px-4 lg:py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold text-xs lg:text-sm transition-all"
           >
-            Send
+            {isGenerating ? '...' : 'Send'}
           </button>
         </div>
       </form>
