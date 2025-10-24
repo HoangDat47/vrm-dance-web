@@ -61,9 +61,9 @@ export default function ModelSelector({ selectedModelId, onSelectModel }: ModelS
                       : 'hover:bg-white/10'
                   }`}
                 >
-                  {model.thumbnail ? (
+                  {model.avatar ? (
                     <img 
-                      src={model.thumbnail} 
+                      src={model.avatar} 
                       alt={model.name}
                       className="w-10 h-10 object-cover"
                     />
