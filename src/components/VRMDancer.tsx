@@ -364,10 +364,18 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
       )}
       
       {/* Debug Info */}
-      <div className="bottom-4 left-1/2 z-30 fixed bg-black/60 backdrop-blur-xl px-4 py-2 rounded text-white text-xs -translate-x-1/2">
-        <p>Playing: {currentAnimation.split('/').pop() || 'None'}</p>
-        <p>Queue: {animationQueueRef.current.length} | Played: {playedQueueRef.current.length}/{allAnimationsRef.current.length}</p>
-        <p>Cached: {loadedAnimations.size} animations</p>
+      <div className="bottom-6 left-1/2 z-30 fixed bg-linear-to-r from-pink-200/90 via-purple-200/90 to-blue-200/90 shadow-lg backdrop-blur-xl px-5 py-3 border-2 border-purple-300 rounded-lg text-purple-700 text-xs -translate-x-1/2">
+        <div className="space-y-1">
+          <p className="font-bold text-sm">
+            <span className="inline-block bg-purple-300/50 mr-2 px-2 py-0.5 rounded">♪</span>
+            {currentAnimation.split('/').pop() || 'None'}
+          </p>
+          <div className="flex gap-4 text-purple-600">
+            <span className="font-semibold">Queue: {animationQueueRef.current.length}</span>
+            <span className="font-semibold">Played: {playedQueueRef.current.length}/{allAnimationsRef.current.length}</span>
+            <span className="font-semibold">Cache: {loadedAnimations.size}</span>
+          </div>
+        </div>
       </div>
     </>
   );

@@ -60,10 +60,13 @@ export function ModelCombobox({ selectedModelId, onSelectModel }: ModelComboboxP
               {VRM_MODELS.map((model) => (
                 <CommandItem
                   key={model.id}
-                  value={model.id}
+                  value={model.name}
                   onSelect={(currentValue) => {
-                    onSelectModel(currentValue);
-                    setOpen(false);
+                    const selectedId = VRM_MODELS.find(m => m.name === currentValue)?.id;
+                    if (selectedId) {
+                      onSelectModel(selectedId);
+                      setOpen(false);
+                    }
                   }}
                   className="gap-3 cursor-pointer"
                 >
