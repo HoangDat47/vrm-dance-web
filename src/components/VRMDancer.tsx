@@ -355,16 +355,16 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
       
       {/* Loading Screen */}
       {isLoading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="z-50 fixed inset-0 flex justify-center items-center bg-black/50 backdrop-blur-sm">
           <div className="text-white text-center">
-            <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-lg font-semibold">Loading VRM Model...</p>
+            <div className="mx-auto mb-4 border-4 border-purple-500 border-t-transparent rounded-full w-16 h-16 animate-spin" />
+            <p className="font-semibold text-lg">Loading VRM Model...</p>
           </div>
         </div>
       )}
       
       {/* Debug Info */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 bg-black/60 backdrop-blur-xl px-4 py-2 text-white text-xs rounded">
+      <div className="bottom-4 left-1/2 z-30 fixed bg-black/60 backdrop-blur-xl px-4 py-2 rounded text-white text-xs -translate-x-1/2">
         <p>Playing: {currentAnimation.split('/').pop() || 'None'}</p>
         <p>Queue: {animationQueueRef.current.length} | Played: {playedQueueRef.current.length}/{allAnimationsRef.current.length}</p>
         <p>Cached: {loadedAnimations.size} animations</p>
