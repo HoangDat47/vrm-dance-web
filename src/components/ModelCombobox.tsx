@@ -36,7 +36,7 @@ export function ModelCombobox({ selectedModelId, onSelectModel }: ModelComboboxP
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-2 lg:px-3 py-1 lg:py-1.5 border border-white/20 hover:border-white/40 h-auto text-white text-xs lg:text-sm transition-colors"
+          className="gap-2 bg-white/10 hover:bg-white/20 px-2 lg:px-3 border-white/20 hover:border-white/40 h-auto text-white text-xs lg:text-sm transition-colors"
         >
           {selectedModel.avatar && (
             <Image
@@ -53,9 +53,9 @@ export function ModelCombobox({ selectedModelId, onSelectModel }: ModelComboboxP
       </PopoverTrigger>
       <PopoverContent className="p-0 w-48">
         <Command>
-          <CommandInput placeholder="Search model..." className="h-9" />
+          <CommandInput placeholder="Search model..." className="h-8" />
           <CommandList>
-            <CommandEmpty>No model found.</CommandEmpty>
+            <CommandEmpty className="py-6 text-sm text-center">No model found.</CommandEmpty>
             <CommandGroup>
               {VRM_MODELS.map((model) => (
                 <CommandItem
@@ -65,7 +65,7 @@ export function ModelCombobox({ selectedModelId, onSelectModel }: ModelComboboxP
                     onSelectModel(currentValue);
                     setOpen(false);
                   }}
-                  className="flex items-center gap-3 cursor-pointer"
+                  className="gap-3 cursor-pointer"
                 >
                   {model.avatar && (
                     <Image
