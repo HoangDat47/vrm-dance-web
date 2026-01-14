@@ -22,13 +22,13 @@ export default function ModelSelector({ selectedModelId, onSelectModel }: ModelS
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 lg:px-4 py-2 border border-white/10 hover:bg-white/20 transition-all"
+        className="flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm px-3 lg:px-4 py-2 border border-white/10 transition-all"
       >
         <div className="flex items-center gap-2">
           <svg className="w-4 h-4 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
             <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
           </svg>
-          <span className="text-white text-xs lg:text-sm font-semibold">
+          <span className="font-semibold text-white text-xs lg:text-sm">
             {selectedModel.name}
           </span>
         </div>
@@ -45,11 +45,11 @@ export default function ModelSelector({ selectedModelId, onSelectModel }: ModelS
       {isOpen && (
         <>
           <div 
-            className="fixed inset-0 z-40" 
+            className="z-40 fixed inset-0" 
             onClick={() => setIsOpen(false)}
           />
 
-          <div className="absolute top-full mt-2 right-0 z-50 w-64 bg-black/90 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden">
+          <div className="top-full right-0 z-50 absolute bg-black/90 shadow-2xl backdrop-blur-xl mt-2 border border-white/10 w-64 overflow-hidden">
             <div className="p-2">
               {VRM_MODELS.map((model) => (
                 <button
@@ -68,15 +68,15 @@ export default function ModelSelector({ selectedModelId, onSelectModel }: ModelS
                       className="w-10 h-10 object-cover"
                     />
                   ) : (
-                    <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">
+                    <div className="flex justify-center items-center bg-linear-to-br from-purple-500 to-pink-500 w-10 h-10">
+                      <span className="font-bold text-white text-sm">
                         {model.name[0]}
                       </span>
                     </div>
                   )}
 
                   <div className="flex-1">
-                    <p className="text-white text-sm font-semibold">{model.name}</p>
+                    <p className="font-semibold text-white text-sm">{model.name}</p>
                     <p className="text-white/60 text-xs">VRM Model</p>
                   </div>
 
