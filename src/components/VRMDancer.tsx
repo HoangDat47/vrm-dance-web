@@ -356,8 +356,8 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
       {/* Loading Screen */}
       {isLoading && (
         <div className="z-50 fixed inset-0 flex justify-center items-center bg-black/50 backdrop-blur-sm">
-          <div className="text-white text-center">
-            <div className="mx-auto mb-4 border-4 border-purple-500 border-t-transparent rounded-full w-16 h-16 animate-spin" />
+          <div className="flex flex-col items-center text-white text-center">
+            <div className="mb-4 border-4 border-purple-500 border-t-transparent rounded-full w-16 h-16 animate-spin" />
             <p className="font-semibold text-lg">Loading VRM Model...</p>
           </div>
         </div>
