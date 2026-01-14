@@ -1,190 +1,241 @@
-# 🎭 VRM Dance Studio
+# 🎭 VRM Dance Web
 
-A stunning live streaming platform featuring virtual VRM characters with real-time animations, live chat, and music integration.
+A stunning web application featuring virtual VRM characters with real-time animations, dynamic animation queue system, and interactive UI.
 
-![Next.js](https://img.shields.io/badge/Next.js-15-black)
+![Next.js](https://img.shields.io/badge/Next.js-16-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
-![Three.js](https://img.shields.io/badge/Three.js-Latest-orange)
-![License](https://img.shields.io/badge/license-MIT-green)
+![Three.js](https://img.shields.io/badge/Three.js-0.180-orange)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-38B2AC)
 
 ## ✨ Features
 
-- 🎪 **VRM Character Animation** - Real-time 3D character rendering with VRMA animation support
-- 💬 **Live Chat System** - Interactive chat with user avatars and color-coded messages
-- 🎵 **Spotify Integration** - Embedded music player with playlist support
-- 🌊 **Danmaku Comments** - Floating comments across the screen (Bilibili/Niconico style)
-- 📱 **Fully Responsive** - Optimized for desktop, tablet, and mobile devices
-- ✨ **Glassmorphism UI** - Modern, translucent interface design
-- 🎨 **Smooth Animations** - Powered by Framer Motion and CSS animations
+- 🎪 **Real-time VRM Rendering** - 3D character rendering with Three.js and @pixiv/three-vrm
+- 💃 **VRMA Animation Queue** - Automatic animation playback with lazy loading and shuffling
+- 🎨 **Dynamic Model/Background Switcher** - Easy switching between multiple VRM models and backgrounds
+- 📊 **Advanced Status Bar** - Real-time stats with Needy Girl Overdose inspired UI (pastel retro style)
+- 💾 **Cookie-based State Persistence** - Remembers user's selected model and background
+- 📱 **Responsive UI** - Modern glassmorphism design with Tailwind CSS
+- ⚡ **Performance Optimized** - Lazy loading, smart caching, and efficient animation management
 
-## 🚀 Demo
-
-[Live Demo](#) (Add your deployment URL here)
-
-## 📸 Screenshots
-
-Add screenshots of your application here
-
-## 🛠️ Tech Stack
-
-### Frontend
-- **Next.js 15** - React framework with App Router
-- **TypeScript** - Type-safe development
-- **Tailwind CSS** - Utility-first styling
-- **Framer Motion** - Animation library
-
-### 3D & VRM
-- **Three.js** - WebGL 3D library
-- **@pixiv/three-vrm** - VRM model loader and runtime
-- **@pixiv/three-vrm-animation** - VRMA animation support
-- **@react-three/fiber** - React renderer for Three.js
-
-## 📦 Installation
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ 
-- npm or yarn or pnpm
+- Node.js 18+
+- npm, yarn, or pnpm
 
-### Setup
+### Installation
 
-1. **Clone the repository**
-
-```
-git clone https://github.com/yourusername/vrm-dance-studio.git
-cd vrm-dance-studio
-```
-2. **Install dependencies**
-```
+1. **Clone and install**
+```bash
+git clone https://github.com/yourusername/vrm-dance-web.git
+cd vrm-dance-web
 npm install
-# or
-yarn install
-# or
-pnpm install
-```
-3. **Add your VRM model and VRMA animation**
-
-Place your files in the `public` folder:
-```
-public/
-    ├── model.vrm
-    └── animation.vrma
-    ```
-4. **Update the file paths in `src/app/page.tsx`**
-```
-<VRMDancer vrmUrl="/models/your-model.vrm" animationUrl="/animations/your-animation.vrma" />
 ```
 
-5. **Run the development server**
-```
+2. **Run development server**
+```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## 📁 Project Structure
+3. **Open in browser**
+```
+http://localhost:3000
+```
+
+## 🛠️ Tech Stack
+
+### Core
+- **Next.js 16** - React framework with App Router
+- **TypeScript 5** - Type-safe development
+- **Tailwind CSS 4** - Utility-first styling
+
+### 3D & VRM
+- **Three.js 0.180** - WebGL 3D library
+- **@pixiv/three-vrm 3.4.3** - VRM model loading and runtime
+- **@pixiv/three-vrm-animation 3.4.3** - VRMA animation support
+
+### UI & Animation
+- **Framer Motion 12** - Advanced animations
+- **Radix UI** - Accessible UI components
+- **Lucide React** - Icon library
+
+### AI Integration
+- **Google Generative AI** - For potential AI features
+
+## � Project Structure
 
 ```
-vrm-dance-studio/
+vrm-dance-web/
 ├── src/
-│ ├── app/
-│ │ ├── page.tsx # Main page with live stream UI
-│ │ ├── layout.tsx # Root layout
-│ │ └── globals.css # Global styles & animations
-│ └── components/
-│ └── VRMDancer.tsx # VRM character renderer
+│   ├── app/
+│   │   ├── page.tsx              # Main application page
+│   │   ├── layout.tsx            # Root layout
+│   │   └── globals.css           # Global styles
+│   ├── components/
+│   │   ├── VRMDancer.tsx         # VRM 3D renderer with animation queue
+│   │   ├── LiveHeader.tsx        # Header with controls
+│   │   ├── ModelSelector.tsx     # Model selection UI
+│   │   ├── ModelCombobox.tsx     # Model dropdown
+│   │   ├── BackgroundCombobox.tsx # Background dropdown
+│   │   └── ui/                   # Reusable UI components
+│   ├── constants/
+│   │   ├── models.ts             # VRM model configurations
+│   │   ├── backgrounds.ts        # Background image paths
+│   │   ├── animations.ts         # Animation list
+│   │   ├── demo-comments.ts      # Demo chat messages
+│   │   ├── default-playlists.ts  # Playlist data
+│   │   └── personalities.ts      # Character personalities
+│   ├── hooks/
+│   │   └── useAIResponse.ts      # AI response hook
+│   ├── types/
+│   │   └── chat.ts               # TypeScript types
+│   ├── utils/
+│   │   ├── cookies.ts            # Cookie utilities
+│   │   ├── gemini.ts             # AI integration
+│   │   └── shuffle.ts            # Array shuffle utility
+│   └── lib/
+│       └── utils.ts              # Helper utilities
 ├── public/
-│ ├── models/ # VRM model files
-│ └── animations/ # VRMA animation files
-├── next.config.ts
+│   ├── models/                   # VRM model files (.vrm)
+│   ├── animations/               # VRMA animation files (.vrma)
+│   ├── background/               # Background images
+│   └── avatar/                   # Character avatars
+├── package.json
+├── tsconfig.json
 ├── tailwind.config.ts
-└── package.json
+├── next.config.ts
+└── README.md
 ```
 
 ## 🎨 Customization
 
-### Change Character
-Replace the VRM model in `public/models/` and update the path in `page.tsx`
+### Add New VRM Models
 
-### Change Animation
-Replace the VRMA file in `public/animations/` and update the path in `page.tsx`
-
-### Modify Chat Messages
-Edit the `DEMO_COMMENTS` array in `src/app/page.tsx`:
+1. Place your `.vrm` file in `public/models/`
+2. Add to `src/constants/models.ts`:
+```typescript
+{
+  id: 'model-3',
+  name: 'Your Character Name',
+  path: '/models/your-model.vrm',
+  avatar: '/avatar/your-avatar.webp',
+  rotation: 0,
+  scale: 1.25
+}
 ```
-const DEMO_COMMENTS = [
-{ user: 'YourName', text: 'Hello!', color: '#FF69B4' },
-// Add more...
+
+### Add New Animations
+
+1. Place your `.vrma` file in `public/animations/`
+2. Add to `src/constants/animations.ts`:
+```typescript
+export const ANIMATION_LIST = [
+  '/animations/dance.vrma',
+  '/animations/your-animation.vrma',
+  // ...
 ];
 ```
 
-### Change Spotify Playlist
-Update the Spotify embed URL in the iframe:
+### Change Background Images
+
+1. Place image in `public/background/`
+2. Add to `src/constants/backgrounds.ts`:
+```typescript
+{
+  id: 'custom-bg',
+  name: 'Custom Background',
+  path: '/background/your-bg.png',
+  description: 'Your description'
+}
 ```
-src="https://open.spotify.com/embed/playlist/YOUR_PLAYLIST_ID"
-```
 
-## 🎯 Features Breakdown
+## 🎯 How It Works
 
-### VRM Character
-- Loads VRM 1.0 models
-- Supports VRMA animations
-- Real-time rendering with Three.js
-- Customizable scale and position
+### Animation Queue System
+The `VRMDancer` component implements a sophisticated animation system:
+- **Auto-play**: Automatically cycles through animations from the queue
+- **Lazy Loading**: Animations load on-demand to optimize performance
+- **Preloading**: First 3 animations preload for smooth playback
+- **Shuffling**: Animation order is randomized each cycle
+- **Status Display**: Retro UI shows real-time queue, played count, and cache size
 
-### Live Chat
-- Real-time message display
-- User avatars with color coding
-- Auto-scroll functionality
-- Message input with validation
+### State Persistence
+User preferences are saved to cookies:
+- Selected VRM model (365 days)
+- Selected background (365 days)
 
-### Danmaku System
-- Floating comments across screen
-- Random positioning
-- Custom colors and animations
-- Desktop-only feature
-
-### Responsive Design
-- Mobile: Collapsible panels with floating buttons
-- Tablet: Optimized layout
-- Desktop: Full feature set with sidebars
+### Performance Optimizations
+- WebGL context culling disabled for smooth animation
+- Efficient animation mixer updates
+- Smart cleanup on tab visibility changes
+- Heartbeat system monitors animation health every 3 seconds
 
 ## 🐛 Troubleshooting
 
-**VRM model not loading?**
-- Check file path is correct
-- Ensure VRM file is version 1.0
-- Check browser console for errors
+### VRM Model Not Loading
+- Verify file path is correct in `constants/models.ts`
+- Ensure VRM file is version 1.0+
+- Check browser console for loader errors
+- Confirm model file is not corrupted
 
-**Animation not playing?**
-- Verify VRMA file format
-- Check file path in code
-- Ensure model supports the animation
+### Animations Not Playing
+- Verify VRMA file format is correct
+- Check animation paths in `constants/animations.ts`
+- Ensure VRM model supports the animation
+- Check browser DevTools for animation errors
 
-**Performance issues?**
+### Performance Issues
 - Reduce VRM model polygon count
-- Disable danmaku on mobile
-- Optimize textures
+- Limit number of preloaded animations
+- Close other browser tabs
+- Use hardware acceleration in browser settings
+
+### Model/Background Not Switching
+- Clear browser cookies and refresh
+- Check that model/background ID exists in constants
+- Verify file paths are accessible
+
+## 📚 API Reference
+
+### VRMDancer Component Props
+```typescript
+interface VRMDancerProps {
+  vrmUrl: string;      // Path to .vrm model file
+  rotation?: number;   // Model rotation in degrees (default: 0)
+  scale?: number;      // Model scale factor (default: 1.5)
+}
+```
+
+### Status Bar Display
+Real-time stats shown at bottom center:
+- **Current Animation**: Name of currently playing animation
+- **Queue**: Number of animations waiting in queue
+- **Played**: Count of animations played / total animations
+- **Cache**: Number of preloaded animations in memory
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! To get started:
 
-1. Fork the project
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Commit (`git commit -m 'Add amazing feature'`)
+5. Push (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
 
-## 🌟 Star History
+## 📝 Available Scripts
 
-If you find this project useful, please consider giving it a star ⭐
+```bash
+npm run dev      # Start development server
+npm run build    # Build for production
+npm start        # Run production server
+npm run lint     # Run ESLint
+```
 
----
+## 📄 License
 
-Made with ❤️ using Next.js and Three.js
+This project is open source and available under the MIT License.
 
 
