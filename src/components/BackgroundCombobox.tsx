@@ -36,7 +36,7 @@ export function BackgroundCombobox({ selectedBackgroundId, onSelectBackground }:
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="gap-2 bg-linear-to-r from-pink-300 hover:from-pink-400 to-purple-300 hover:to-purple-400 shadow-md px-2 lg:px-3 py-0.5 lg:py-1 border-2 border-purple-400 h-auto font-bold text-purple-700 text-xs lg:text-sm transition-all"
+          className="gap-2 bg-linear-to-r from-purple-600 to-pink-500 shadow-[0_10px_30px_-18px_rgba(109,40,217,0.9)] hover:shadow-[0_16px_34px_-18px_rgba(109,40,217,0.9)] px-3 border border-purple-200 rounded-full h-9 font-semibold text-white text-sm transition hover:-translate-y-0.5"
         >
           {selectedBackground.thumbnail && (
             <Image
@@ -44,18 +44,18 @@ export function BackgroundCombobox({ selectedBackgroundId, onSelectBackground }:
               alt={selectedBackground.name}
               width={20}
               height={20}
-              className="border border-purple-400 rounded"
+              className="shadow-[0_6px_14px_-10px_rgba(0,0,0,0.55)] border border-white/60 rounded-full w-6 h-6 object-cover"
             />
           )}
-          <span className="hidden sm:inline">{selectedBackground.name}</span>
-          <ChevronsUpDown className="w-3 lg:w-4 h-3 lg:h-4 text-purple-700" />
+          <span className="hidden sm:inline whitespace-nowrap">{selectedBackground.name}</span>
+          <ChevronsUpDown className="w-4 h-4 text-white/80" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="bg-linear-to-b from-blue-50 to-pink-50 shadow-lg p-0 border-2 border-purple-400 w-48">
+      <PopoverContent className="bg-white/95 shadow-[0_18px_40px_-24px_rgba(109,40,217,0.35)] backdrop-blur p-0 border border-purple-100 w-52">
         <Command>
-          <CommandInput placeholder="Search background..." className="bg-white/70 border-purple-300 border-b-2 h-8 font-semibold text-purple-700 text-xs placeholder-purple-400" />
+          <CommandInput placeholder="Search background..." className="bg-white/70 border-purple-100 border-b h-9 font-medium text-neutral-700 text-sm placeholder-neutral-400" />
           <CommandList>
-            <CommandEmpty className="py-3 font-semibold text-purple-600 text-xs text-center">No background found.</CommandEmpty>
+            <CommandEmpty className="py-3 font-semibold text-neutral-500 text-xs text-center">No background found.</CommandEmpty>
             <CommandGroup>
               {BACKGROUNDS.map((background) => (
                 <CommandItem
@@ -68,19 +68,21 @@ export function BackgroundCombobox({ selectedBackgroundId, onSelectBackground }:
                       setOpen(false);
                     }
                   }}
-                  className="flex flex-col items-start gap-2 data-highlighted:bg-purple-200/60 hover:bg-purple-100/50 p-2 border-purple-200/50 border-b text-purple-700 text-sm cursor-pointer"
+                  className="flex flex-col items-start gap-2 data-[highlighted]:bg-purple-50/90 hover:bg-purple-50/70 px-3 py-2 border-purple-50 border-b text-neutral-700 text-sm transition cursor-pointer"
                 >
                   {background.thumbnail && (
-                    <Image
-                      src={background.thumbnail}
-                      alt={background.name}
-                      width={160}
-                      height={90}
-                      className="border border-purple-300 rounded w-full h-20 object-cover"
-                    />
+                    <div className="shadow-[0_12px_30px_-24px_rgba(109,40,217,0.5)] border border-purple-100 rounded-xl w-full h-20 overflow-hidden">
+                      <Image
+                        src={background.thumbnail}
+                        alt={background.name}
+                        width={160}
+                        height={90}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                   )}
                   <div className="flex justify-between items-center w-full">
-                    <span className="font-semibold">{background.name}</span>
+                    <span className="font-semibold text-neutral-800">{background.name}</span>
                     <Check
                       className={cn(
                         'w-4 h-4 text-purple-600',
@@ -88,7 +90,7 @@ export function BackgroundCombobox({ selectedBackgroundId, onSelectBackground }:
                       )}
                     />
                   </div>
-                  <span className="text-purple-500 text-xs">{background.description}</span>
+                  <span className="text-neutral-500 text-xs">{background.description}</span>
                 </CommandItem>
               ))}
             </CommandGroup>
