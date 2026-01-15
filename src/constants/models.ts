@@ -24,6 +24,30 @@ export const VRM_MODELS: VRMModel[] = [
     rotation: 180,
     scale: 1.25
   },
+  {
+    id: 'model-3',
+    name: 'Iva Hellock',
+    path: '/models/Iva_Hellock_v10.vrm',
+    avatar: '/avatar/Iva.jpg',
+    rotation: 180,
+    scale: 1.25
+  },
+  {
+    id: 'model-4',
+    name: 'Iva Hellock B',
+    path: '/models/Iva_Hellock_B._ver.vrm',
+    avatar: '/avatar/IvaB.jpg',
+    rotation: 180,
+    scale: 1.25
+  },
+  {
+    id: 'model-5',
+    name: 'Tlipoca',
+    path: '/models/Tlipoca_maid_.vrm',
+    avatar: '/avatar/Tlipoca.jpg',
+    rotation: 180,
+    scale: 1.25
+  },
   // Add more models here
 ];
 
