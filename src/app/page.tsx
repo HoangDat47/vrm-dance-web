@@ -1,11 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import LiveHeader from '@/components/LiveHeader';
 import { VRM_MODELS, DEFAULT_MODEL_ID } from '@/constants/models';
 import { BACKGROUNDS, DEFAULT_BACKGROUND_ID } from '@/constants/backgrounds';
 import { getCookie, setCookie } from '@/utils/cookies';
+import { testSupabaseConnection, testSupabaseAuth } from '@/utils/test-supabase';
+import { useAuth } from '@/lib/auth-context';
 
 const VRMDancer = dynamic(() => import('@/components/VRMDancer'), { ssr: false });
 
@@ -13,13 +16,25 @@ const COOKIE_MODEL_KEY = 'selected_vrm_model';
 const COOKIE_BACKGROUND_KEY = 'selected_background';
 
 export default function Home() {
+  const router = useRouter();
+  const { user, isLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [viewerCount, setViewerCount] = useState(8234);
   const [selectedModelId, setSelectedModelId] = useState<string>(DEFAULT_MODEL_ID);
   const [selectedBackgroundId, setSelectedBackgroundId] = useState<string>(DEFAULT_BACKGROUND_ID);
 
   useEffect(() => {
+    // Redirect to auth page if not logged in
+    if (!isLoading && !user) {
+      router.push('/auth');
+      return;
+    }
+
     setMounted(true);
+
+    // Test Supabase connection
+    testSupabaseConnection();
+    testSupabaseAuth();
 
     const savedModelId = getCookie(COOKIE_MODEL_KEY);
     if (savedModelId && VRM_MODELS.find(m => m.id === savedModelId)) {

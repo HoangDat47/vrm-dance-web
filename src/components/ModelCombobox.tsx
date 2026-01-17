@@ -68,7 +68,7 @@ export function ModelCombobox({ selectedModelId, onSelectModel }: ModelComboboxP
                       setOpen(false);
                     }
                   }}
-                  className="gap-3 data-[highlighted]:bg-neutral-50 px-3 py-2 text-neutral-700 transition cursor-pointer"
+                  className="gap-3 data-highlighted:bg-neutral-50 px-3 py-2 text-neutral-700 transition cursor-pointer"
                 >
                   {model.avatar && (
                     <div className="shadow-[0_8px_18px_-14px_rgba(0,0,0,0.45)] border border-neutral-100 rounded-full w-9 h-9 overflow-hidden">
