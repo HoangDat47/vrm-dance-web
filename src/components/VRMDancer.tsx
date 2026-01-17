@@ -225,6 +225,24 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
   useEffect(() => {
     if (!canvasRef.current) return;
 
+    // Reset refs when model changes
+    vrmRef.current = null;
+    mixerRef.current = null;
+    currentClipRef.current = null;
+    loaderRef.current = null;
+    isPlayingRef.current = false;
+    animationQueueRef.current = [];
+    playedQueueRef.current = [];
+    allAnimationsRef.current = [];
+    isLoadingAnimationRef.current = false;
+    if (animationTimeoutRef.current) {
+      clearTimeout(animationTimeoutRef.current);
+      animationTimeoutRef.current = null;
+    }
+    setLoadedAnimations(new Map());
+    setCurrentAnimation('');
+    setIsLoading(true);
+
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 20);
     camera.position.set(0, 1.4, 3);
