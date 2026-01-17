@@ -3,12 +3,15 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -18,27 +21,11 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || 'Login failed');
-        setIsLoading(false);
-        return;
-      }
-
-      // Store session/user info in localStorage or context
-      localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('session', JSON.stringify(data.session));
-
+      await login(email, password);
+      // Login successful, navigate to home
       router.push('/');
-    } catch (err) {
-      setError('An error occurred. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'An error occurred. Please try again.');
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -47,10 +34,8 @@ export default function LoginPage() {
 
   return (
     <div className="flex bg-white min-h-screen">
-      {/* Left side - Login Form */}
       <div className="flex flex-1 justify-center items-center px-4 sm:px-6 lg:px-8">
         <div className="space-y-10 w-full max-w-md">
-          {/* Logo and Header */}
           <div>
             <div className="flex items-center gap-3 mb-10">
               <div className="flex justify-center items-center bg-linear-to-br from-violet-600 to-indigo-600 w-12 h-12">
@@ -117,6 +102,21 @@ export default function LoginPage() {
               </div>
             </div>
 
+            <div className="flex justify-between items-center pt-1">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="border-gray-300 focus:ring-violet-500 w-4 h-4 text-violet-600 cursor-pointer"
+                />
+                <label htmlFor="remember-me" className="block ml-2 text-gray-700 text-sm cursor-pointer">
+                  Remember me
+                </label>
+              </div>
+            </div>
+
             <div className="pt-2">
               <button
                 type="submit"
@@ -140,7 +140,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right side - Feature/Image Section */}
       <div className="hidden lg:flex flex-1 justify-center items-center bg-linear-to-br from-violet-600 via-purple-600 to-indigo-700 p-12">
         <div className="max-w-md text-center">
           <div className="mb-10">

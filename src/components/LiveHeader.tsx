@@ -7,11 +7,13 @@ import { useAuth } from '@/lib/auth-context';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
+import { type Model } from '@/components/ModelCombobox';
 
 interface LiveHeaderProps {
   viewerCount: number;
   selectedModelId: string;
   onSelectModel: (modelId: string) => void;
+  models?: Model[];
   selectedBackgroundId: string;
   onSelectBackground: (backgroundId: string) => void;
 }
@@ -20,6 +22,7 @@ export default function LiveHeader({
   viewerCount, 
   selectedModelId, 
   onSelectModel,
+  models,
   selectedBackgroundId,
   onSelectBackground
 }: LiveHeaderProps) {
@@ -66,12 +69,13 @@ export default function LiveHeader({
           <ModelCombobox 
             selectedModelId={selectedModelId}
             onSelectModel={onSelectModel}
+            models={models}
           />
           
           {user && (
             <Popover>
               <PopoverTrigger asChild>
-                <button className="flex items-center gap-2 bg-gradient-to-br from-purple-600 hover:from-purple-700 to-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl px-4 py-2 rounded-full font-medium text-white text-sm transition-all">
+                <button className="flex items-center gap-2 bg-linear-to-br from-purple-600 hover:from-purple-700 to-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl px-4 py-2 rounded-full font-medium text-white text-sm transition-all">
                   <User className="w-4 h-4" />
                   <span className="hidden sm:inline">{user.username || user.email}</span>
                 </button>
@@ -93,7 +97,7 @@ export default function LiveHeader({
                     className="flex items-center gap-2 w-full"
                   >
                     <LogOut className="w-4 h-4" />
-                    Đăng xuất
+                    Log Out
                   </Button>
                 </div>
               </PopoverContent>

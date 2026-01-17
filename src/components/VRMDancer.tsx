@@ -14,7 +14,7 @@ import { shuffleArray } from '@/utils/shuffle';
 interface VRMDancerProps {
   vrmUrl: string;
   rotation?: number;
-  scale?: number; 
+  scale?: number;
 }
 
 export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDancerProps) {
@@ -234,7 +234,13 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
       alpha: true,
       antialias: true,
     });
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    
+    const canvas = canvasRef.current;
+    const rect = canvas.parentElement?.getBoundingClientRect();
+    const width = rect?.width || window.innerWidth;
+    const height = rect?.height || window.innerHeight;
+    
+    renderer.setSize(width, height);
     renderer.setPixelRatio(window.devicePixelRatio);
 
     // Lighting
@@ -350,12 +356,12 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
   }, [vrmUrl]);
 
   return (
-    <>
-      <canvas ref={canvasRef} className="fixed inset-0 w-full h-full" />
+    <div className="relative w-full h-full overflow-hidden">
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
       
       {/* Loading Screen */}
       {isLoading && (
-        <div className="z-50 fixed inset-0 flex justify-center items-center bg-black/50 backdrop-blur-sm">
+        <div className="z-50 absolute inset-0 flex justify-center items-center bg-black/50 backdrop-blur-sm">
           <div className="flex flex-col items-center text-white text-center">
             <div className="mb-4 border-4 border-purple-500 border-t-transparent rounded-full w-16 h-16 animate-spin" />
             <p className="font-semibold text-lg">Loading VRM Model...</p>
@@ -364,11 +370,11 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
       )}
       
       {/* Debug Info */}
-      <div className="bottom-4 left-1/2 z-30 fixed bg-black/60 backdrop-blur-xl px-4 py-2 rounded text-white text-xs -translate-x-1/2">
+      <div className="bottom-4 left-1/2 z-30 absolute bg-black/60 backdrop-blur-xl px-4 py-2 rounded text-white text-xs -translate-x-1/2">
         <p>Playing: {currentAnimation.split('/').pop() || 'None'}</p>
         <p>Queue: {animationQueueRef.current.length} | Played: {playedQueueRef.current.length}/{allAnimationsRef.current.length}</p>
         <p>Cached: {loadedAnimations.size} animations</p>
       </div>
-    </>
+    </div>
   );
 }

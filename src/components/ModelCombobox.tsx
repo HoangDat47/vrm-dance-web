@@ -18,16 +18,52 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { VRM_MODELS } from '@/constants/models';
+
+export interface Model {
+  id: string;
+  name: string;
+  path: string;
+  avatar: string | null;
+  rotation: number;
+  scale: number;
+}
 
 interface ModelComboboxProps {
   selectedModelId: string;
   onSelectModel: (modelId: string) => void;
+  models?: Model[];
 }
 
-export function ModelCombobox({ selectedModelId, onSelectModel }: ModelComboboxProps) {
+export function ModelCombobox({ selectedModelId, onSelectModel, models: externalModels }: ModelComboboxProps) {
   const [open, setOpen] = React.useState(false);
-  const selectedModel = VRM_MODELS.find(m => m.id === selectedModelId) || VRM_MODELS[0];
+  const [models, setModels] = React.useState<Model[]>(externalModels || []);
+  const [isLoading, setIsLoading] = React.useState(!externalModels);
+
+  React.useEffect(() => {
+    if (externalModels) {
+      setModels(externalModels);
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchModels = async () => {
+      try {
+        const response = await fetch('/api/models');
+        const data = await response.json();
+        if (data.models) {
+          setModels(data.models);
+        }
+      } catch (error) {
+        console.error('Error fetching models:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchModels();
+  }, [externalModels]);
+
+  const selectedModel = models.find(m => m.id === selectedModelId) || models[0];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -38,16 +74,24 @@ export function ModelCombobox({ selectedModelId, onSelectModel }: ModelComboboxP
           aria-expanded={open}
           className="gap-2 bg-white/85 shadow-[0_10px_26px_-18px_rgba(0,0,0,0.6)] hover:shadow-[0_16px_30px_-18px_rgba(0,0,0,0.65)] px-3 border border-neutral-200 hover:border-neutral-300 rounded-full h-9 font-semibold text-neutral-800 text-sm transition hover:-translate-y-0.5"
         >
-          {selectedModel.avatar && (
-            <Image
-              src={selectedModel.avatar}
-              alt={selectedModel.name}
-              width={20}
-              height={20}
-              className="shadow-[0_6px_14px_-10px_rgba(0,0,0,0.45)] border border-white/70 rounded-full w-6 h-6 object-cover"
-            />
+          {isLoading ? (
+            <span className="text-neutral-500 text-sm">Loading...</span>
+          ) : selectedModel ? (
+            <>
+              {selectedModel.avatar && (
+                <Image
+                  src={selectedModel.avatar}
+                  alt={selectedModel.name}
+                  width={20}
+                  height={20}
+                  className="shadow-[0_6px_14px_-10px_rgba(0,0,0,0.45)] border border-white/70 rounded-full w-6 h-6 object-cover"
+                />
+              )}
+              <span className="hidden sm:inline whitespace-nowrap">{selectedModel.name}</span>
+            </>
+          ) : (
+            <span className="text-neutral-500 text-sm">No models</span>
           )}
-          <span className="hidden sm:inline whitespace-nowrap">{selectedModel.name}</span>
           <ChevronsUpDown className="w-4 h-4 text-neutral-400" />
         </Button>
       </PopoverTrigger>
@@ -57,12 +101,12 @@ export function ModelCombobox({ selectedModelId, onSelectModel }: ModelComboboxP
           <CommandList>
             <CommandEmpty className="py-6 text-neutral-500 text-sm text-center">No model found.</CommandEmpty>
             <CommandGroup>
-              {VRM_MODELS.map((model) => (
+              {models.map((model) => (
                 <CommandItem
                   key={model.id}
                   value={model.name}
                   onSelect={(currentValue) => {
-                    const selectedId = VRM_MODELS.find(m => m.name === currentValue)?.id;
+                    const selectedId = models.find(m => m.name === currentValue)?.id;
                     if (selectedId) {
                       onSelectModel(selectedId);
                       setOpen(false);
