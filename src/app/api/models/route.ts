@@ -43,8 +43,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get auth token from cookies
-    const token = request.cookies.get('sb-access-token')?.value;
+    // Accept bearer token header (preferred) or fallback to cookie
+    const authHeader = request.headers.get('authorization');
+    const tokenFromHeader = authHeader?.toLowerCase().startsWith('bearer ')
+      ? authHeader.slice(7)
+      : null;
+    const token = tokenFromHeader || request.cookies.get('sb-access-token')?.value;
     if (!token) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -168,8 +172,12 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
-    // Require auth token
-    const token = request.cookies.get('sb-access-token')?.value;
+    // Require auth token (Authorization header preferred; cookie fallback)
+    const authHeader = request.headers.get('authorization');
+    const tokenFromHeader = authHeader?.toLowerCase().startsWith('bearer ')
+      ? authHeader.slice(7)
+      : null;
+    const token = tokenFromHeader || request.cookies.get('sb-access-token')?.value;
     if (!token) {
       return NextResponse.json(
         { error: 'Unauthorized' },

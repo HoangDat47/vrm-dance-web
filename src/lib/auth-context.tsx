@@ -87,20 +87,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      // Sign in directly with Supabase on the client so the session is persisted
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
+      if (error || !data.session) {
+        throw new Error(error?.message || 'Login failed');
       }
 
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+
+      if (userError || !userData) {
+        throw new Error(userError?.message || 'Failed to fetch user');
+      }
+
+      // supabase-js persists the session to storage, so refresh (F5) keeps the user logged in
       setSession(data.session);
-      setUser(data.user);
+      setUser(userData);
     } finally {
       setIsLoading(false);
     }

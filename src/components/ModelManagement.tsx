@@ -6,6 +6,14 @@ import { supabase } from '@/lib/supabase';
 import { Upload, Trash2, Save } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
+const formatBytes = (bytes: number) => {
+  if (!bytes) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const idx = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / Math.pow(1024, idx);
+  return `${value.toFixed(value >= 10 || value < 1 ? 1 : 2)} ${units[idx]}`;
+};
+
 const VRMPreview = dynamic(() => import('@/components/VRMPreview'), { ssr: false });
 
 interface Model {
@@ -23,12 +31,23 @@ interface ModelManagementProps {
   onModelsUpdate: () => void;
 }
 
+type UploadStep = 'idle' | 'vrm' | 'avatar' | 'db';
+
+interface UploadStats {
+  total: number;
+  uploaded: number;
+  speedMbps: number | null;
+}
+
 export default function ModelManagement({ onUploadStateChange, onModelsUpdate }: ModelManagementProps) {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [models, setModels] = useState<Model[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStep, setUploadStep] = useState<UploadStep>('idle');
+  const [vrmStats, setVrmStats] = useState<UploadStats>({ total: 0, uploaded: 0, speedMbps: null });
+  const [avatarStats, setAvatarStats] = useState<UploadStats>({ total: 0, uploaded: 0, speedMbps: null });
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   
   // Upload form state
@@ -47,6 +66,9 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
     setPreviewScale(1.25);
     setPreviewUrl(null);
     onUploadStateChange(false);
+    setVrmStats({ total: 0, uploaded: 0, speedMbps: null });
+    setAvatarStats({ total: 0, uploaded: 0, speedMbps: null });
+    setUploadStep('idle');
   };
 
   useEffect(() => {
@@ -98,40 +120,61 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
 
     setIsUploading(true);
     setUploadProgress(0);
+    setUploadStep('vrm');
+    setVrmStats({ total: vrmFile.size, uploaded: 0, speedMbps: null });
+    if (avatarFile) setAvatarStats({ total: avatarFile.size, uploaded: 0, speedMbps: null });
     onUploadStateChange(true);
 
     try {
       // Upload VRM file
       const vrmFileName = `${Date.now()}_${vrmFile.name}`;
       
-      setUploadProgress(25);
+      setUploadProgress(10);
+      const vrmStart = performance.now();
       const { data: vrmData, error: vrmError } = await supabase.storage
         .from('vrm-models')
         .upload(vrmFileName, vrmFile);
 
       if (vrmError) throw vrmError;
 
+      const vrmDuration = Math.max(performance.now() - vrmStart, 1);
+      const vrmSpeedMbps = (vrmFile.size / (1024 * 1024)) / (vrmDuration / 1000);
+      setVrmStats({ total: vrmFile.size, uploaded: vrmFile.size, speedMbps: vrmSpeedMbps });
+
       const vrmPath = supabase.storage.from('vrm-models').getPublicUrl(vrmFileName).data.publicUrl;
-      setUploadProgress(50);
+      setUploadProgress(45);
 
       // Upload avatar if provided
       let avatarPath = null;
       if (avatarFile) {
+        setUploadStep('avatar');
         const avatarFileName = `${Date.now()}_${avatarFile.name}`;
+        const avatarStart = performance.now();
         const { data: avatarData, error: avatarError } = await supabase.storage
           .from('avatars')
           .upload(avatarFileName, avatarFile);
 
         if (avatarError) throw avatarError;
 
+        const avatarDuration = Math.max(performance.now() - avatarStart, 1);
+        const avatarSpeedMbps = (avatarFile.size / (1024 * 1024)) / (avatarDuration / 1000);
+        setAvatarStats({ total: avatarFile.size, uploaded: avatarFile.size, speedMbps: avatarSpeedMbps });
+
         avatarPath = supabase.storage.from('avatars').getPublicUrl(avatarFileName).data.publicUrl;
+        setUploadProgress(70);
+      } else {
+        setUploadProgress(70);
       }
-      setUploadProgress(75);
+
+      setUploadStep('db');
 
       // Create model record
       const response = await fetch('/api/models', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           name: modelName,
           path: vrmPath,
@@ -148,6 +191,7 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
       }
 
       setUploadProgress(100);
+      setUploadStep('idle');
 
       // Reset form
       clearPreview();
@@ -160,6 +204,7 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
     } catch (error: any) {
       console.error('Upload error:', error);
       alert('Failed to upload model: ' + error.message);
+      setUploadStep('idle');
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
@@ -180,6 +225,7 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
     try {
       const response = await fetch(`/api/models?id=${model.id}`, {
         method: 'DELETE',
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
       });
 
       const data = await response.json();
@@ -189,6 +235,7 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
       }
 
       fetchModels();
+      onModelsUpdate();
       alert('Model deleted successfully!');
     } catch (error: any) {
       console.error('Delete error:', error);
@@ -205,7 +252,10 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
     try {
       const response = await fetch('/api/models', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           id: model.id,
           rotation: model.rotation,
@@ -337,6 +387,28 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
                 className="bg-violet-600 h-full transition-all duration-300"
                 style={{ width: `${uploadProgress}%` }}
               />
+            </div>
+          )}
+          {isUploading && (
+            <div className="space-y-2 text-gray-600 text-xs">
+              <p className={uploadStep === 'vrm' ? 'font-semibold text-gray-900' : ''}>• Upload VRM file</p>
+              <p className={uploadStep === 'avatar' ? 'font-semibold text-gray-900' : ''}>• Upload avatar (optional)</p>
+              <p className={uploadStep === 'db' ? 'font-semibold text-gray-900' : ''}>• Save to database</p>
+
+              <div className="space-y-1 text-[11px] text-gray-500">
+                {vrmStats.total > 0 && (
+                  <p>
+                    VRM: {formatBytes(vrmStats.uploaded)} / {formatBytes(vrmStats.total)}
+                    {vrmStats.speedMbps ? ` (${vrmStats.speedMbps.toFixed(2)} MB/s)` : ''}
+                  </p>
+                )}
+                {avatarFile && avatarStats.total > 0 && (
+                  <p>
+                    Avatar: {formatBytes(avatarStats.uploaded)} / {formatBytes(avatarStats.total)}
+                    {avatarStats.speedMbps ? ` (${avatarStats.speedMbps.toFixed(2)} MB/s)` : ''}
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </div>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import LiveHeader from '@/components/LiveHeader';
 import AdminPanel from '@/components/AdminPanel';
@@ -25,7 +24,6 @@ interface Model {
 }
 
 export default function Home() {
-  const router = useRouter();
   const { user, isLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [viewerCount, setViewerCount] = useState(8234);
@@ -75,14 +73,7 @@ export default function Home() {
     return () => {
       clearInterval(viewerInterval);
     };
-  }, [user, isLoading, router]);
-
-  // Redirect to login page if not logged in
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isLoading, router]);
+  }, []);
 
   const handleSelectModel = (modelId: string) => {
     setSelectedModelId(modelId);
