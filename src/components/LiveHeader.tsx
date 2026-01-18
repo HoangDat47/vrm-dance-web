@@ -1,11 +1,15 @@
 'use client';
 
-import { Users, LogOut, User } from 'lucide-react';
+import { Users } from 'lucide-react';
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  SignUpButton,
+  UserButton,
+} from '@clerk/nextjs';
 import { ModelCombobox } from './ModelCombobox';
 import { BackgroundCombobox } from './BackgroundCombobox';
-import { useAuth } from '@/lib/auth-context';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { type Model } from '@/components/ModelCombobox';
 
@@ -26,13 +30,7 @@ export default function LiveHeader({
   selectedBackgroundId,
   onSelectBackground
 }: LiveHeaderProps) {
-  const { user, logout } = useAuth();
   const router = useRouter();
-
-  const handleLogout = async () => {
-    await logout();
-    router.push('/');
-  };
 
   return (
     <header className="top-4 z-50 fixed inset-x-0 flex justify-center px-3">
@@ -72,37 +70,22 @@ export default function LiveHeader({
             models={models}
           />
           
-          {user && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="flex items-center gap-2 bg-linear-to-br from-purple-600 hover:from-purple-700 to-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl px-4 py-2 rounded-full font-medium text-white text-sm transition-all">
-                  <User className="w-4 h-4" />
-                  <span className="hidden sm:inline">{user.username || user.email}</span>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="p-4 w-64">
-                <div className="space-y-3">
-                  <div className="pb-3 border-b">
-                    <p className="font-semibold text-sm">{user.username || 'User'}</p>
-                    <p className="text-muted-foreground text-xs">{user.email}</p>
-                    <div className="mt-2">
-                      <span className="inline-block bg-purple-100 px-2 py-1 rounded-md font-medium text-purple-800 text-xs uppercase">
-                        {user.role}
-                      </span>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={handleLogout}
-                    variant="outline"
-                    className="flex items-center gap-2 w-full"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Log Out
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
+          <SignedOut>
+            <SignInButton>
+              <button className="bg-neutral-900 hover:bg-neutral-800 px-4 py-2 rounded-full font-semibold text-white text-sm transition-colors">
+                Sign in
+              </button>
+            </SignInButton>
+            <SignUpButton>
+              <button className="bg-white hover:bg-neutral-100 px-4 py-2 border border-neutral-200 rounded-full font-semibold text-neutral-900 text-sm transition-colors">
+                Sign up
+              </button>
+            </SignUpButton>
+          </SignedOut>
+
+          <SignedIn>
+            <UserButton appearance={{ elements: { avatarBox: 'w-10 h-10' } }} />
+          </SignedIn>
         </div>
       </div>
     </header>

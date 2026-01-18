@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { ClerkProvider } from '@clerk/nextjs';
 import { AuthProvider } from '@/lib/auth-context';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
@@ -20,22 +21,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <head>
-        {/* Google Fonts - Japanese Anime Style */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@300;400;500;700;800;900&display=swap" 
-          rel="stylesheet" 
-        />
-      </head>
-      <body className={inter.className}>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
-        <SpeedInsights />
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en">
+        <head>
+          {/* Google Fonts - Japanese Anime Style */}
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+          <link 
+            href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@300;400;500;700;800;900&display=swap" 
+            rel="stylesheet" 
+          />
+        </head>
+        <body className={inter.className}>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+          <SpeedInsights />
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

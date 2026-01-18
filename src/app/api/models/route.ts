@@ -1,8 +1,10 @@
+import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 // GET - List all models
 export async function GET(request: NextRequest) {
@@ -35,31 +37,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { name, path, avatar, rotation, scale } = await request.json();
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     if (!name || !path) {
-      return NextResponse.json(
-        { error: 'Name and path are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Name and path are required' }, { status: 400 });
     }
 
-    // Accept bearer token header (preferred) or fallback to cookie
-    const authHeader = request.headers.get('authorization');
-    const tokenFromHeader = authHeader?.toLowerCase().startsWith('bearer ')
-      ? authHeader.slice(7)
-      : null;
-    const token = tokenFromHeader || request.cookies.get('sb-access-token')?.value;
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-    // Use service role key to set created_by automatically
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
       auth: {
         autoRefreshToken: false,
@@ -67,21 +54,19 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Get user from token to verify auth
-    const supabaseAuth = createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', userId)
+      .single();
 
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(token);
+    if (profileError) {
+      console.error('Failed to read user role:', profileError);
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    if (!profile || profile.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { data, error } = await supabase
@@ -93,7 +78,7 @@ export async function POST(request: NextRequest) {
           avatar: avatar || null,
           rotation: rotation || 0,
           scale: scale || 1.25,
-          created_by: user.id,
+          created_by: userId,
         },
       ])
       .select()
@@ -172,17 +157,9 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
-    // Require auth token (Authorization header preferred; cookie fallback)
-    const authHeader = request.headers.get('authorization');
-    const tokenFromHeader = authHeader?.toLowerCase().startsWith('bearer ')
-      ? authHeader.slice(7)
-      : null;
-    const token = tokenFromHeader || request.cookies.get('sb-access-token')?.value;
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     if (!id) {
@@ -192,34 +169,26 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
       },
     });
 
-    // Verify user role
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('users')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single();
 
+    if (profileError) {
+      console.error('Failed to read user role:', profileError);
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     if (!profile || profile.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Get model info to delete files

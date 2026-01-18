@@ -41,7 +41,7 @@ interface UploadStats {
 }
 
 export default function ModelManagement({ onUploadStateChange, onModelsUpdate }: ModelManagementProps) {
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const [models, setModels] = useState<Model[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -205,7 +205,6 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({
           name: modelName,
@@ -261,7 +260,6 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
     try {
       const response = await fetch(`/api/models?id=${model.id}`, {
         method: 'DELETE',
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
       });
 
       const data = await response.json();
@@ -290,7 +288,6 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({
           id: model.id,

@@ -1,0 +1,1 @@
+ALTER TABLE users ADD COLUMN clerk_id text UNIQUE NOT NULL DEFAULT 'temp';

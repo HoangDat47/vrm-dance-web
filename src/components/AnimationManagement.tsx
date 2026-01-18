@@ -36,7 +36,7 @@ interface UploadStats {
 }
 
 export default function AnimationManagement({ onAnimationsUpdate, onUploadStateChange }: AnimationManagementProps) {
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const [animations, setAnimations] = useState<Animation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -157,7 +157,6 @@ export default function AnimationManagement({ onAnimationsUpdate, onUploadStateC
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({
           name: animationName,
@@ -210,7 +209,6 @@ export default function AnimationManagement({ onAnimationsUpdate, onUploadStateC
     try {
       const response = await fetch(`/api/animations?id=${animation.id}`, {
         method: 'DELETE',
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
       });
 
       const data = await response.json();
