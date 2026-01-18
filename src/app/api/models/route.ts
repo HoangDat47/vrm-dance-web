@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     const { data: profile, error: profileError } = await supabase
       .from('users')
       .select('role')
-      .eq('id', userId)
+      .eq('clerk_id', userId)
       .single();
 
     if (profileError) {
@@ -179,7 +179,7 @@ export async function DELETE(request: NextRequest) {
     const { data: profile, error: profileError } = await supabase
       .from('users')
       .select('role')
-      .eq('id', userId)
+      .eq('clerk_id', userId)
       .single();
 
     if (profileError) {
