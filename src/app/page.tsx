@@ -85,8 +85,8 @@ export default function Home() {
     setCookie(COOKIE_BACKGROUND_KEY, backgroundId, 365);
   };
 
-  // Show loading state while checking authentication
-  if (!mounted || isLoading) {
+  // Show loading state only while mounting (skip auth loading to prevent stuck)
+  if (!mounted) {
     return (
       <div className="flex justify-center items-center bg-neutral-900 w-screen h-screen">
         <div className="text-center">
@@ -96,8 +96,6 @@ export default function Home() {
       </div>
     );
   }
-
-  if (!mounted) return null;
 
   const selectedModel = models.length > 0 ? models.find(m => m.id === selectedModelId) || models[0] : null;
   const selectedBackground = BACKGROUNDS.find(b => b.id === selectedBackgroundId) || BACKGROUNDS[0];

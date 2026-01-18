@@ -314,16 +314,21 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
         
         console.log('🎲 Initial shuffle:', animationQueueRef.current.map(url => url.split('/').pop()));
 
-        // Preload
-        const priorityAnimations = await preloadPriorityAnimations(vrm, ANIMATION_LIST);
-        setLoadedAnimations(priorityAnimations);
-        console.log(`✅ Preloaded ${priorityAnimations.size} animations`);
-
-        // Play first
+        // ✅ PLAY FIRST ANIMATION IMMEDIATELY (don't wait for preload)
         const firstUrl = getNextAnimation();
         if (firstUrl) {
-          await playAnimationWithLazyLoad(firstUrl, 0);
+          console.log(`🎬 Starting first animation: ${firstUrl.split('/').pop()}`);
+          // Play immediately without await to not block
+          playAnimationWithLazyLoad(firstUrl, 0).then(() => {
+            console.log(`✅ First animation playing: ${firstUrl.split('/').pop()}`);
+          });
         }
+
+        // Preload other animations in background (non-blocking)
+        preloadPriorityAnimations(vrm, ANIMATION_LIST).then((priorityAnimations) => {
+          setLoadedAnimations(priorityAnimations);
+          console.log(`✅ Preloaded ${priorityAnimations.size} animations`);
+        });
 
         setIsLoading(false);
       },
