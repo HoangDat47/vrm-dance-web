@@ -28,6 +28,7 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
   const [isLoading, setIsLoading] = useState(true);
   const [currentAnimation, setCurrentAnimation] = useState<string>('');
   const [loadedAnimations, setLoadedAnimations] = useState<Map<string, THREE.AnimationClip>>(new Map());
+  const [animationLoadError, setAnimationLoadError] = useState<string>('');
   
   const animationQueueRef = useRef<string[]>([]);
   const playedQueueRef = useRef<string[]>([]);
@@ -125,11 +126,17 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
     const clip = await lazyLoadAnimation(animationUrl);
     if (!clip) {
       console.warn('⚠️ Animation failed to load or incompatible, trying next...');
+      const fileName = animationUrl.split('/').pop() || 'unknown';
+      setAnimationLoadError(`Failed to load: ${fileName}. Retrying...`);
       // Auto retry with next animation
-      setTimeout(() => queueNextAnimation(), 500);
+      setTimeout(() => {
+        queueNextAnimation();
+      }, 500);
       return;
     }
 
+    // Clear error when animation loads successfully
+    setAnimationLoadError('');
     console.log(`🎮 Creating action for: ${animationUrl.split('/').pop()}`);
     const newAction = mixer.clipAction(clip);
     
@@ -495,6 +502,11 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
           <div className="flex flex-col items-center text-white text-center">
             <div className="mb-4 border-4 border-purple-500 border-t-transparent rounded-full w-16 h-16 animate-spin" />
             <p className="font-semibold text-lg">Loading VRM Model...</p>
+            {animationLoadError && (
+              <p className="mt-2 text-red-400 text-sm animate-pulse">
+                ⚠️ {animationLoadError}
+              </p>
+            )}
           </div>
         </div>
       )}
