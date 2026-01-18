@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import { Upload, Trash2, Save } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import UploadLog, { LogEntry } from '@/components/UploadLog';
 
 const formatBytes = (bytes: number) => {
   if (!bytes) return '0 B';
@@ -49,6 +50,7 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
   const [vrmStats, setVrmStats] = useState<UploadStats>({ total: 0, uploaded: 0, speedMbps: null });
   const [avatarStats, setAvatarStats] = useState<UploadStats>({ total: 0, uploaded: 0, speedMbps: null });
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   
   // Upload form state
   const [modelName, setModelName] = useState('');
@@ -57,6 +59,22 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
   const [previewRotation, setPreviewRotation] = useState(0);
   const [previewScale, setPreviewScale] = useState(1.25);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const addLog = (message: string, level: 'info' | 'success' | 'error' | 'warning' = 'info') => {
+    const now = new Date();
+    const timestamp = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const newLog: LogEntry = {
+      id: `${Date.now()}-${Math.random()}`,
+      timestamp,
+      level,
+      message,
+    };
+    setLogs((prev) => [...prev, newLog]);
+  };
+
+  const clearLogs = () => {
+    setLogs([]);
+  };
 
   const clearPreview = () => {
     setModelName('');
@@ -69,17 +87,19 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
     setVrmStats({ total: 0, uploaded: 0, speedMbps: null });
     setAvatarStats({ total: 0, uploaded: 0, speedMbps: null });
     setUploadStep('idle');
+    clearLogs();
   };
 
   useEffect(() => {
     fetchModels();
   }, []);
 
-  const fetchModels = async () => {
+  const fetchModels = async (): Promise<void> => {
     try {
       const response = await fetch('/api/models');
       const data = await response.json();
       if (data.models) {
+        console.log('📦 Models fetched:', data.models.length, 'models');
         setModels(data.models);
       }
     } catch (error) {
@@ -118,6 +138,7 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
       return;
     }
 
+    clearLogs();
     setIsUploading(true);
     setUploadProgress(0);
     setUploadStep('vrm');
@@ -125,8 +146,15 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
     if (avatarFile) setAvatarStats({ total: avatarFile.size, uploaded: 0, speedMbps: null });
     onUploadStateChange(true);
 
+    addLog(`Starting upload for model: "${modelName}"`, 'info');
+    addLog(`VRM file: ${vrmFile.name} (${formatBytes(vrmFile.size)})`, 'info');
+    if (avatarFile) {
+      addLog(`Avatar file: ${avatarFile.name} (${formatBytes(avatarFile.size)})`, 'info');
+    }
+
     try {
       // Upload VRM file
+      addLog('Uploading VRM file...', 'info');
       const vrmFileName = `${Date.now()}_${vrmFile.name}`;
       
       setUploadProgress(10);
@@ -140,6 +168,7 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
       const vrmDuration = Math.max(performance.now() - vrmStart, 1);
       const vrmSpeedMbps = (vrmFile.size / (1024 * 1024)) / (vrmDuration / 1000);
       setVrmStats({ total: vrmFile.size, uploaded: vrmFile.size, speedMbps: vrmSpeedMbps });
+      addLog(`VRM uploaded successfully (${vrmSpeedMbps.toFixed(2)} MB/s)`, 'success');
 
       const vrmPath = supabase.storage.from('vrm-models').getPublicUrl(vrmFileName).data.publicUrl;
       setUploadProgress(45);
@@ -148,6 +177,7 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
       let avatarPath = null;
       if (avatarFile) {
         setUploadStep('avatar');
+        addLog('Uploading avatar image...', 'info');
         const avatarFileName = `${Date.now()}_${avatarFile.name}`;
         const avatarStart = performance.now();
         const { data: avatarData, error: avatarError } = await supabase.storage
@@ -159,6 +189,7 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
         const avatarDuration = Math.max(performance.now() - avatarStart, 1);
         const avatarSpeedMbps = (avatarFile.size / (1024 * 1024)) / (avatarDuration / 1000);
         setAvatarStats({ total: avatarFile.size, uploaded: avatarFile.size, speedMbps: avatarSpeedMbps });
+        addLog(`Avatar uploaded successfully (${avatarSpeedMbps.toFixed(2)} MB/s)`, 'success');
 
         avatarPath = supabase.storage.from('avatars').getPublicUrl(avatarFileName).data.publicUrl;
         setUploadProgress(70);
@@ -167,6 +198,7 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
       }
 
       setUploadStep('db');
+      addLog('Saving model to database...', 'info');
 
       // Create model record
       const response = await fetch('/api/models', {
@@ -190,8 +222,10 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
         throw new Error(data.error || 'Failed to create model');
       }
 
+      addLog('Model saved to database successfully', 'success');
       setUploadProgress(100);
       setUploadStep('idle');
+      addLog('Upload completed successfully!', 'success');
 
       // Reset form
       clearPreview();
@@ -203,6 +237,8 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
       alert('Model uploaded successfully!');
     } catch (error: any) {
       console.error('Upload error:', error);
+      addLog(`Error: ${error.message}`, 'error');
+      addLog('Upload failed. Check the console for details.', 'error');
       alert('Failed to upload model: ' + error.message);
       setUploadStep('idle');
     } finally {
@@ -234,7 +270,7 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
         throw new Error(data.error || 'Failed to delete model');
       }
 
-      fetchModels();
+      await fetchModels();
       onModelsUpdate();
       alert('Model deleted successfully!');
     } catch (error: any) {
@@ -411,6 +447,9 @@ export default function ModelManagement({ onUploadStateChange, onModelsUpdate }:
               </div>
             </div>
           )}
+
+          {/* Upload Log */}
+          <UploadLog logs={logs} onClear={clearLogs} isUploading={isUploading} />
         </div>
       </div>
 

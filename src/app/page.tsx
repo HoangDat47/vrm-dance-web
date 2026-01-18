@@ -31,18 +31,26 @@ export default function Home() {
   const [selectedModelId, setSelectedModelId] = useState<string>('');
   const [selectedBackgroundId, setSelectedBackgroundId] = useState<string>(DEFAULT_BACKGROUND_ID);
   const [pauseVRM, setPauseVRM] = useState(false);
+  const [reloadTrigger, setReloadTrigger] = useState(0);
 
   const refreshModels = async () => {
     try {
       const response = await fetch('/api/models');
       const data = await response.json();
       if (data.models && data.models.length > 0) {
+        console.log('🔄 Models refreshed:', data.models.length, 'models');
         setModels(data.models);
 
         const savedModelId = getCookie(COOKIE_MODEL_KEY);
         setSelectedModelId((prev) => {
-          if (prev && data.models.find((m: Model) => m.id === prev)) return prev;
-          if (savedModelId && data.models.find((m: Model) => m.id === savedModelId)) return savedModelId;
+          // If current model still exists, keep it
+          if (prev && data.models.find((m: Model) => m.id === prev)) {
+            console.log('📌 Keeping current model:', prev);
+            return prev;
+          }
+          
+          // Otherwise auto-select the newest model (uploaded one)
+          console.log('✨ Auto-selecting newest model:', data.models[0].id, data.models[0].name);
           return data.models[0].id;
         });
       }
@@ -85,6 +93,11 @@ export default function Home() {
     setCookie(COOKIE_BACKGROUND_KEY, backgroundId, 365);
   };
 
+  const handleAnimationsUpdate = () => {
+    // Trigger model reload to refresh animations
+    setReloadTrigger(prev => prev + 1);
+  };
+
   // Show loading state only while mounting (skip auth loading to prevent stuck)
   if (!mounted) {
     return (
@@ -109,7 +122,12 @@ export default function Home() {
       <div className="z-0 absolute inset-0 bg-black/10" />
 
       {/* Admin Panel - Only visible for admin users */}
-      <AdminPanel onUploadStateChange={setPauseVRM} onModelsUpdate={refreshModels} />
+      <AdminPanel 
+        onUploadStateChange={setPauseVRM} 
+        onModelsUpdate={refreshModels}
+        onAnimationsUpdate={handleAnimationsUpdate}
+        isUploading={pauseVRM}
+      />
 
       <LiveHeader 
         viewerCount={viewerCount}
@@ -131,7 +149,7 @@ export default function Home() {
         ) : selectedModel ? (
           <div className="z-10 absolute inset-0">
             <VRMDancer 
-              key={selectedModelId} 
+              key={`${selectedModelId}-${reloadTrigger}`}
               vrmUrl={selectedModel.path}
               rotation={selectedModel.rotation || 0}
               scale={selectedModel.scale || 1.5}

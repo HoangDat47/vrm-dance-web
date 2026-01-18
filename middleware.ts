@@ -4,16 +4,22 @@ export function middleware(request: NextRequest) {
   // Get the pathname of the request
   const pathname = request.nextUrl.pathname;
 
-  // Allow auth routes without authentication
-  if (pathname === '/auth' || pathname.startsWith('/api/auth/')) {
+  // Allow public routes without authentication
+  if (
+    pathname === '/' ||
+    pathname === '/auth' || 
+    pathname.startsWith('/api/auth/') ||
+    pathname.startsWith('/api/models') ||
+    pathname.startsWith('/api/animations')
+  ) {
     return NextResponse.next();
   }
 
   // Check if user has auth cookie
   const sessionCookie = request.cookies.get('sb-auth-token');
 
-  // Redirect unauthenticated users to auth page
-  if (!sessionCookie && pathname !== '/auth') {
+  // Redirect unauthenticated users to auth page only for protected routes
+  if (!sessionCookie) {
     const url = request.nextUrl.clone();
     url.pathname = '/auth';
     return NextResponse.redirect(url);

@@ -39,28 +39,33 @@ export function ModelCombobox({ selectedModelId, onSelectModel, models: external
   const [models, setModels] = React.useState<Model[]>(externalModels || []);
   const [isLoading, setIsLoading] = React.useState(!externalModels);
 
+  // Update models whenever externalModels prop changes
   React.useEffect(() => {
-    if (externalModels) {
+    if (externalModels && externalModels.length > 0) {
+      console.log('📦 ModelCombobox: Updating model list', externalModels.length, 'models');
       setModels(externalModels);
       setIsLoading(false);
       return;
     }
 
-    const fetchModels = async () => {
-      try {
-        const response = await fetch('/api/models');
-        const data = await response.json();
-        if (data.models) {
-          setModels(data.models);
+    if (externalModels === undefined) {
+      const fetchModels = async () => {
+        try {
+          const response = await fetch('/api/models');
+          const data = await response.json();
+          if (data.models) {
+            console.log('📦 ModelCombobox: Fetched', data.models.length, 'models from API');
+            setModels(data.models);
+          }
+        } catch (error) {
+          console.error('Error fetching models:', error);
+        } finally {
+          setIsLoading(false);
         }
-      } catch (error) {
-        console.error('Error fetching models:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      };
 
-    fetchModels();
+      fetchModels();
+    }
   }, [externalModels]);
 
   const selectedModel = models.find(m => m.id === selectedModelId) || models[0];

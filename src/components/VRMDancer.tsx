@@ -26,8 +26,8 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
   const loaderRef = useRef<GLTFLoader | null>(null);
   
   const [isLoading, setIsLoading] = useState(true);
-  const [loadedAnimations, setLoadedAnimations] = useState<Map<string, THREE.AnimationClip>>(new Map());
   const [currentAnimation, setCurrentAnimation] = useState<string>('');
+  const [loadedAnimations, setLoadedAnimations] = useState<Map<string, THREE.AnimationClip>>(new Map());
   
   const animationQueueRef = useRef<string[]>([]);
   const playedQueueRef = useRef<string[]>([]);
@@ -225,7 +225,7 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    // Reset refs when model changes
+    // Reset when model changes
     vrmRef.current = null;
     mixerRef.current = null;
     currentClipRef.current = null;
@@ -252,13 +252,7 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
       alpha: true,
       antialias: true,
     });
-    
-    const canvas = canvasRef.current;
-    const rect = canvas.parentElement?.getBoundingClientRect();
-    const width = rect?.width || window.innerWidth;
-    const height = rect?.height || window.innerHeight;
-    
-    renderer.setSize(width, height);
+    renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
 
     // Lighting
@@ -306,31 +300,49 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
         const mixer = new THREE.AnimationMixer(vrm.scene);
         mixerRef.current = mixer;
 
-        // Load animation list
-        const { ANIMATION_LIST } = await import('@/constants/animations');
-        
-        allAnimationsRef.current = ANIMATION_LIST;
-        animationQueueRef.current = shuffleArray([...ANIMATION_LIST]);
-        
-        console.log('🎲 Initial shuffle:', animationQueueRef.current.map(url => url.split('/').pop()));
+        // Load animation list from database
+        try {
+          const animationsResponse = await fetch('/api/animations');
+          
+          if (!animationsResponse.ok) {
+            console.error('❌ Failed to fetch animations');
+            setIsLoading(false);
+            return;
+          }
+          
+          const animationsData = await animationsResponse.json();
+          
+          if (!animationsData.animations || animationsData.animations.length === 0) {
+            console.warn('⚠️ No animations found in database');
+            setIsLoading(false);
+            setCurrentAnimation('NO_ANIMATIONS');
+            return;
+          }
+          
+          const ANIMATION_LIST: string[] = animationsData.animations.map((anim: any) => anim.path);
+          console.log(`✅ Loaded ${ANIMATION_LIST.length} animations from database`);
+          
+          allAnimationsRef.current = ANIMATION_LIST;
+          animationQueueRef.current = shuffleArray([...ANIMATION_LIST]);
+          
+          console.log('🎲 Initial shuffle:', animationQueueRef.current.map(url => url.split('/').pop()));
 
-        // ✅ PLAY FIRST ANIMATION IMMEDIATELY (don't wait for preload)
-        const firstUrl = getNextAnimation();
-        if (firstUrl) {
-          console.log(`🎬 Starting first animation: ${firstUrl.split('/').pop()}`);
-          // Play immediately without await to not block
-          playAnimationWithLazyLoad(firstUrl, 0).then(() => {
-            console.log(`✅ First animation playing: ${firstUrl.split('/').pop()}`);
-          });
-        }
-
-        // Preload other animations in background (non-blocking)
-        preloadPriorityAnimations(vrm, ANIMATION_LIST).then((priorityAnimations) => {
+          // Preload
+          const priorityAnimations = await preloadPriorityAnimations(vrm, ANIMATION_LIST);
           setLoadedAnimations(priorityAnimations);
           console.log(`✅ Preloaded ${priorityAnimations.size} animations`);
-        });
 
-        setIsLoading(false);
+          // Play first
+          const firstUrl = getNextAnimation();
+          if (firstUrl) {
+            await playAnimationWithLazyLoad(firstUrl, 0);
+          }
+
+          setIsLoading(false);
+        } catch (error) {
+          console.error('❌ Error loading animations:', error);
+          setIsLoading(false);
+        }
       },
       undefined,
       (error) => {
@@ -379,12 +391,12 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
   }, [vrmUrl]);
 
   return (
-    <div className="relative w-full h-full overflow-hidden">
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+    <>
+      <canvas ref={canvasRef} className="fixed inset-0 w-full h-full" />
       
       {/* Loading Screen */}
       {isLoading && (
-        <div className="z-50 absolute inset-0 flex justify-center items-center bg-black/50 backdrop-blur-sm">
+        <div className="z-50 fixed inset-0 flex justify-center items-center bg-black/50 backdrop-blur-sm">
           <div className="flex flex-col items-center text-white text-center">
             <div className="mb-4 border-4 border-purple-500 border-t-transparent rounded-full w-16 h-16 animate-spin" />
             <p className="font-semibold text-lg">Loading VRM Model...</p>
@@ -392,12 +404,25 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
         </div>
       )}
       
+      {/* No Animation Message */}
+      {currentAnimation === 'NO_ANIMATIONS' && (
+        <div className="z-30 fixed inset-0 flex justify-center items-center">
+          <div className="bg-yellow-500/90 shadow-lg backdrop-blur-md px-6 py-4 rounded-lg text-center">
+            <p className="font-semibold text-gray-900 text-lg">⚠️ No Animations Available</p>
+            <p className="mt-2 text-gray-800 text-sm">Please upload animations in Admin Panel</p>
+          </div>
+        </div>
+      )}
+
       {/* Debug Info */}
-      <div className="bottom-4 left-1/2 z-30 absolute bg-black/60 backdrop-blur-xl px-4 py-2 rounded text-white text-xs -translate-x-1/2">
-        <p>Playing: {currentAnimation.split('/').pop() || 'None'}</p>
-        <p>Queue: {animationQueueRef.current.length} | Played: {playedQueueRef.current.length}/{allAnimationsRef.current.length}</p>
-        <p>Cached: {loadedAnimations.size} animations</p>
-      </div>
-    </div>
+      {currentAnimation !== 'NO_ANIMATIONS' && (
+        <div className="bottom-4 left-1/2 z-30 fixed bg-black/60 backdrop-blur-xl px-4 py-2 rounded text-white text-xs -translate-x-1/2">
+          <p>Playing: {currentAnimation.split('/').pop() || 'None'}</p>
+          <p>Queue: {animationQueueRef.current.length} | Played: {playedQueueRef.current.length}/{allAnimationsRef.current.length}</p>
+          <p>Cached: {loadedAnimations.size} animations</p>
+        </div>
+      )}
+    </>
   );
 }
+
