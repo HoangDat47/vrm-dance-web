@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   // Get the pathname of the request
   const pathname = request.nextUrl.pathname;
 
@@ -15,17 +16,31 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check if user has auth cookie
-  const sessionCookie = request.cookies.get('sb-auth-token');
+  // For protected routes, verify Supabase session
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-  // Redirect unauthenticated users to auth page only for protected routes
-  if (!sessionCookie) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/auth';
-    return NextResponse.redirect(url);
+  // Get the access token from cookies
+  const accessToken = request.cookies.get('sb-access-token')?.value || 
+                      request.cookies.get('sb-auth-token')?.value;
+
+  if (accessToken) {
+    try {
+      // Verify the token
+      const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+      if (user && !error) {
+        return NextResponse.next();
+      }
+    } catch (error) {
+      console.error('Auth verification error:', error);
+    }
   }
 
-  return NextResponse.next();
+  // Redirect unauthenticated users to login
+  const url = request.nextUrl.clone();
+  url.pathname = '/login';
+  return NextResponse.redirect(url);
 }
 
 export const config = {

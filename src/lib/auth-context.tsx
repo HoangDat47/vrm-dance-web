@@ -33,16 +33,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check if user is already logged in
     const checkAuth = async () => {
       try {
-        // Add timeout to prevent infinite loading
-        const timeout = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Auth check timeout')), 3000)
-        );
-
-        const authCheck = supabase.auth.getSession();
-
         const {
           data: { session: currentSession },
-        } = await Promise.race([authCheck, timeout]) as any;
+        } = await supabase.auth.getSession();
 
         if (currentSession) {
           setSession(currentSession);
@@ -60,7 +53,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error('Error checking auth:', error);
-        // Still set loading to false even on error/timeout
       } finally {
         setIsLoading(false);
       }
