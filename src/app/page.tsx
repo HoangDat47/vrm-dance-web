@@ -69,9 +69,17 @@ export default function Home() {
     // Fetch models from database
     refreshModels();
 
+    // Load saved background from cookie
     const savedBackgroundId = getCookie(COOKIE_BACKGROUND_KEY);
     if (savedBackgroundId && BACKGROUNDS.find(b => b.id === savedBackgroundId)) {
       setSelectedBackgroundId(savedBackgroundId);
+    }
+    
+    // Load saved model from cookie first, will be overridden if needed in refreshModels
+    const savedModelId = getCookie(COOKIE_MODEL_KEY);
+    if (savedModelId) {
+      console.log('📌 Restoring saved model from cache:', savedModelId);
+      setSelectedModelId(savedModelId);
     }
 
     const viewerInterval = setInterval(() => {

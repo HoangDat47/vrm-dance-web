@@ -39,35 +39,71 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
   // Lazy load animation
   const lazyLoadAnimation = async (animationUrl: string): Promise<THREE.AnimationClip | null> => {
     if (loadedAnimations.has(animationUrl)) {
+      console.log(`♻️ Using cached: ${animationUrl.split('/').pop()}`);
       return loadedAnimations.get(animationUrl)!;
     }
 
     if (isLoadingAnimationRef.current) {
+      console.log('⏳ Animation loading in progress, skipping...');
       return null;
     }
 
     const vrm = vrmRef.current;
     const loader = loaderRef.current;
 
-    if (!vrm || !loader) return null;
+    if (!vrm || !loader) {
+      console.error('❌ VRM or loader not ready');
+      return null;
+    }
 
     try {
       isLoadingAnimationRef.current = true;
-      console.log(`🔄 Loading: ${animationUrl.split('/').pop()}`);
+      const fileName = animationUrl.split('/').pop() || 'unknown';
+      console.log(`🔄 Loading animation: ${fileName}`);
+      
+      // Failsafe: reset flag after 10 seconds
+      const loadingTimeout = setTimeout(() => {
+        if (isLoadingAnimationRef.current) {
+          console.warn('⚠️ Animation load timeout, resetting flag');
+          isLoadingAnimationRef.current = false;
+        }
+      }, 10000);
 
       const gltf = await loader.loadAsync(animationUrl);
       const vrmAnimations = gltf.userData.vrmAnimations as VRMAnimation[];
       
-      if (vrmAnimations && vrmAnimations[0]) {
-        const clip = createVRMAnimationClip(vrmAnimations[0], vrm);
-        setLoadedAnimations(prev => new Map(prev).set(animationUrl, clip));
-        console.log(`✅ Loaded: ${animationUrl.split('/').pop()}`);
-        return clip;
+      if (!vrmAnimations || vrmAnimations.length === 0) {
+        console.error(`❌ No VRM animation data in ${fileName}`);
+        clearTimeout(loadingTimeout);
+        return null;
       }
+      
+      if (!vrmAnimations[0]) {
+        console.error(`❌ VRM animation[0] is empty in ${fileName}`);
+        clearTimeout(loadingTimeout);
+        return null;
+      }
+
+      console.log(`🎬 Creating animation clip for VRM...`);
+      const clip = createVRMAnimationClip(vrmAnimations[0], vrm);
+      
+      // Check if clip has tracks
+      if (!clip.tracks || clip.tracks.length === 0) {
+        console.warn(`⚠️ Animation has NO TRACKS - incompatible with this VRM model: ${fileName}`);
+        console.warn(`⚠️ VRM bones:`, vrm.humanoid?.humanBones ? Object.keys(vrm.humanoid.humanBones).length : 'none');
+        clearTimeout(loadingTimeout);
+        return null;
+      }
+      
+      console.log(`✅ Animation clip created: ${fileName} (${clip.tracks.length} tracks, ${clip.duration.toFixed(1)}s)`);
+      setLoadedAnimations(prev => new Map(prev).set(animationUrl, clip));
+      clearTimeout(loadingTimeout);
+      return clip;
     } catch (error) {
-      console.error(`❌ Failed: ${animationUrl.split('/').pop()}`, error);
+      console.error(`❌ Failed to load: ${animationUrl.split('/').pop()}`, error);
     } finally {
       isLoadingAnimationRef.current = false;
+      console.log('✨ Loading flag reset: isLoadingAnimationRef =', isLoadingAnimationRef.current);
     }
 
     return null;
@@ -76,7 +112,10 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
   // Play animation with loop
   const playAnimationWithLazyLoad = async (animationUrl: string, fadeTime: number = 0.5) => {
     const mixer = mixerRef.current;
-    if (!mixer) return;
+    if (!mixer) {
+      console.error('❌ Mixer not ready');
+      return;
+    }
 
     // Clear previous timeout
     if (animationTimeoutRef.current) {
@@ -84,8 +123,14 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
     }
 
     const clip = await lazyLoadAnimation(animationUrl);
-    if (!clip) return;
+    if (!clip) {
+      console.warn('⚠️ Animation failed to load or incompatible, trying next...');
+      // Auto retry with next animation
+      setTimeout(() => queueNextAnimation(), 500);
+      return;
+    }
 
+    console.log(`🎮 Creating action for: ${animationUrl.split('/').pop()}`);
     const newAction = mixer.clipAction(clip);
     
     // ✅ Loop animation để không bị dừng
@@ -149,24 +194,41 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
     const loader = loaderRef.current;
     const animations = new Map<string, THREE.AnimationClip>();
 
-    if (!loader) return animations;
+    if (!loader) {
+      console.warn('⚠️ Loader not ready for preload');
+      return animations;
+    }
 
+    console.log(`📦 Preloading first 3 animations...`);
     const loadPromises = urls.slice(0, 3).map(async (url) => {
       try {
+        const fileName = url.split('/').pop() || 'unknown';
+        console.log(`⏳ Preloading: ${fileName}`);
+        
         const gltf = await loader.loadAsync(url);
         const vrmAnimations = gltf.userData.vrmAnimations as VRMAnimation[];
         
         if (vrmAnimations && vrmAnimations[0]) {
           const clip = createVRMAnimationClip(vrmAnimations[0], vrm);
+          
+          // Check tracks
+          if (!clip.tracks || clip.tracks.length === 0) {
+            console.warn(`⚠️ Preload: ${fileName} has no tracks, skipping`);
+            return;
+          }
+          
           animations.set(url, clip);
-          console.log(`✅ Preloaded: ${url.split('/').pop()}`);
+          console.log(`✅ Preloaded: ${fileName} (${clip.tracks.length} tracks)`);
+        } else {
+          console.warn(`⚠️ Preload: ${fileName} has no VRM animation data`);
         }
       } catch (error) {
-        console.error(`Failed to preload: ${url.split('/').pop()}`, error);
+        console.error(`❌ Failed to preload: ${url.split('/').pop()}`, error);
       }
     });
 
     await Promise.all(loadPromises);
+    console.log(`📦 Preload complete: ${animations.size}/3 animations ready`);
     return animations;
   };
 
@@ -225,20 +287,37 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
   useEffect(() => {
     if (!canvasRef.current) return;
 
+    console.log('🔄 Loading new VRM model...');
+
+    // Stop all animations first
+    if (currentClipRef.current) {
+      currentClipRef.current.stop();
+    }
+
+    // Dispose mixer properly
+    if (mixerRef.current) {
+      mixerRef.current.stopAllAction();
+      mixerRef.current.uncacheRoot(mixerRef.current.getRoot());
+      mixerRef.current = null;
+    }
+
     // Reset when model changes
     vrmRef.current = null;
-    mixerRef.current = null;
     currentClipRef.current = null;
     loaderRef.current = null;
     isPlayingRef.current = false;
     animationQueueRef.current = [];
     playedQueueRef.current = [];
     allAnimationsRef.current = [];
+    // IMPORTANT: Force reset loading flag to prevent skip
     isLoadingAnimationRef.current = false;
+    console.log('✨ Reset: isLoadingAnimationRef =', isLoadingAnimationRef.current);
     if (animationTimeoutRef.current) {
       clearTimeout(animationTimeoutRef.current);
       animationTimeoutRef.current = null;
     }
+    
+    // Clear animation cache - important when changing models
     setLoadedAnimations(new Map());
     setCurrentAnimation('');
     setIsLoading(true);
@@ -379,14 +458,30 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
 
     // Cleanup
     return () => {
+      console.log('🧹 Cleaning up VRM...');
       window.removeEventListener('resize', handleResize);
+      
       if (animationTimeoutRef.current) {
         clearTimeout(animationTimeoutRef.current);
       }
-      renderer.dispose();
+      
+      // Stop all animations
+      if (currentClipRef.current) {
+        currentClipRef.current.stop();
+      }
+      
+      // Dispose mixer
+      if (mixerRef.current) {
+        mixerRef.current.stopAllAction();
+        mixerRef.current.uncacheRoot(mixerRef.current.getRoot());
+      }
+      
+      // Remove VRM from scene
       if (vrmRef.current) {
         scene.remove(vrmRef.current.scene);
       }
+      
+      renderer.dispose();
     };
   }, [vrmUrl]);
 
