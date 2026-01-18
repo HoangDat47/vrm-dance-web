@@ -4,8 +4,15 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Tạo Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Tạo Supabase client với persistent session
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storageKey: 'sb-auth-token',
+  },
+});
 
 // Type definitions cho database của bạn
 export type Database = {
