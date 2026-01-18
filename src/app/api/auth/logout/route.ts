@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    // Get the session from the request
-    const { data, error } = await supabase.auth.signOut();
+    // Sign out the user
+    const { error } = await supabase.auth.signOut();
 
     if (error) {
       return NextResponse.json(
