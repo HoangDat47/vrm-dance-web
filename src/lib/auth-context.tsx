@@ -60,13 +60,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     checkAuth();
 
-    // Listen for auth changes - only handle SIGNED_IN and TOKEN_REFRESHED
-    // Ignore SIGNED_OUT from other windows/tabs to prevent session loss
+    // Listen for auth changes in THIS window only
     const { data } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       console.log('Auth state change:', event);
       
-      // Only update state for positive auth events or explicit user logout
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      // Handle all auth state changes
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
         setSession(newSession);
 
         if (newSession?.user) {
@@ -81,12 +80,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       } else if (event === 'SIGNED_OUT') {
-        // Only clear session if it's an explicit logout (no session at all)
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        if (!currentSession) {
-          setSession(null);
-          setUser(null);
-        }
+        // Only clear if explicitly signed out in THIS window
+        setSession(null);
+        setUser(null);
       }
     });
 
