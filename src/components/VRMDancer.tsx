@@ -29,6 +29,7 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
   const [currentAnimation, setCurrentAnimation] = useState<string>('');
   const [loadedAnimations, setLoadedAnimations] = useState<Map<string, THREE.AnimationClip>>(new Map());
   const [animationLoadError, setAnimationLoadError] = useState<string>('');
+  const [blendShapeInfo, setBlendShapeInfo] = useState<{ count: number; names: string[] }>({ count: 0, names: [] });
   
   const animationQueueRef = useRef<string[]>([]);
   const playedQueueRef = useRef<string[]>([]);
@@ -96,7 +97,10 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
         return null;
       }
       
-      console.log(`✅ Animation clip created: ${fileName} (${clip.tracks.length} tracks, ${clip.duration.toFixed(1)}s)`);
+      // Count bone tracks vs blend shape tracks
+      const boneTrackCount = clip.tracks.filter(t => !t.name.includes('morphTargetInfluences')).length;
+      const blendShapeTrackCount = clip.tracks.filter(t => t.name.includes('morphTargetInfluences')).length;
+      console.log(`✅ Animation clip created: ${fileName} (${clip.tracks.length} tracks - ${boneTrackCount} bones, ${blendShapeTrackCount} blend shapes, ${clip.duration.toFixed(1)}s)`);
       setLoadedAnimations(prev => new Map(prev).set(animationUrl, clip));
       clearTimeout(loadingTimeout);
       return clip;
@@ -157,6 +161,12 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
     currentClipRef.current = newAction;
     setCurrentAnimation(animationUrl);
     isPlayingRef.current = true;
+    
+    // Extract and display blend shape info
+    const blendShapeTracks = clip.tracks.filter(t => t.name.includes('morphTargetInfluences'));
+    const blendShapeNames = blendShapeTracks.map(t => t.name.replace('.morphTargetInfluences', ''));
+    setBlendShapeInfo({ count: blendShapeTracks.length, names: blendShapeNames });
+    console.log(`👁️ Blend shapes in this animation:`, blendShapeNames.length > 0 ? blendShapeNames : 'None');
     
     if (!playedQueueRef.current.includes(animationUrl)) {
       playedQueueRef.current.push(animationUrl);
@@ -224,8 +234,12 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
             return;
           }
           
+          // Count bone vs blend shape tracks
+          const boneTrackCount = clip.tracks.filter(t => !t.name.includes('morphTargetInfluences')).length;
+          const blendShapeTrackCount = clip.tracks.filter(t => t.name.includes('morphTargetInfluences')).length;
+          
           animations.set(url, clip);
-          console.log(`✅ Preloaded: ${fileName} (${clip.tracks.length} tracks)`);
+          console.log(`✅ Preloaded: ${fileName} (${boneTrackCount} bones, ${blendShapeTrackCount} blend shapes)`);
         } else {
           console.warn(`⚠️ Preload: ${fileName} has no VRM animation data`);
         }
@@ -327,6 +341,7 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
     // Clear animation cache - important when changing models
     setLoadedAnimations(new Map());
     setCurrentAnimation('');
+    setBlendShapeInfo({ count: 0, names: [] });
     setIsLoading(true);
 
     const scene = new THREE.Scene();
@@ -523,10 +538,29 @@ export default function VRMDancer({ vrmUrl, rotation = 0, scale = 1.5 }: VRMDanc
 
       {/* Debug Info */}
       {currentAnimation !== 'NO_ANIMATIONS' && (
-        <div className="bottom-4 left-1/2 z-30 fixed bg-black/60 backdrop-blur-xl px-4 py-2 rounded text-white text-xs -translate-x-1/2">
-          <p>Playing: {currentAnimation.split('/').pop() || 'None'}</p>
-          <p>Queue: {animationQueueRef.current.length} | Played: {playedQueueRef.current.length}/{allAnimationsRef.current.length}</p>
-          <p>Cached: {loadedAnimations.size} animations</p>
+        <div className="bottom-4 left-1/2 z-30 fixed bg-black/60 backdrop-blur-xl px-4 py-2 rounded max-w-md max-h-48 overflow-y-auto text-white text-xs -translate-x-1/2">
+          <p>▶️ {currentAnimation.split('/').pop() || 'None'}</p>
+          <p>📊 Queue: {animationQueueRef.current.length} | Played: {playedQueueRef.current.length}/{allAnimationsRef.current.length}</p>
+          <p>💾 Cached: {loadedAnimations.size} animations</p>
+          
+          {/* Blend Shapes Info */}
+          <div className="mt-2 pt-2 border-gray-500 border-t">
+            {blendShapeInfo.count > 0 ? (
+              <>
+                <p className="font-semibold text-green-400">👁️ Face expressions: ✓ ({blendShapeInfo.count})</p>
+                <div className="mt-1 ml-2 text-gray-300">
+                  {blendShapeInfo.names.slice(0, 5).map((name, idx) => (
+                    <p key={idx} className="text-xs">• {name}</p>
+                  ))}
+                  {blendShapeInfo.names.length > 5 && (
+                    <p className="text-gray-400 text-xs">... +{blendShapeInfo.names.length - 5} more</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="text-yellow-400">👁️ Face expressions: ✗ (No facial expressions)</p>
+            )}
+          </div>
         </div>
       )}
     </>
